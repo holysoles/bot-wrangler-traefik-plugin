@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"slices"
 	"net/url"
+	"slices"
+	"time"
 )
 
 // define constants for enum validation
@@ -20,19 +21,21 @@ const (
 
 // Config the plugin configuration.
 type Config struct {
-	LogLevel           string `json:"logLevel,omitempty"`
-	BotAction          string `json:"botAction,omitempty"`
-	RobotsTXTFilePath  string `json:"robotsTxtFilePath,omitempty"`
-	UserAgentSourceURL string `json:"userAgentSourceUrl,omitempty"`
+	BotAction           string `json:"botAction,omitempty"`
+	CacheUpdateInterval string `json:"cacheUpdateInterval,omitempty"`
+	LogLevel            string `json:"logLevel,omitempty"`
+	RobotsTXTFilePath   string `json:"robotsTxtFilePath,omitempty"`
+	RobotsSourceURL     string `json:"robotsSourceUrl,omitempty"`
 }
 
 // New creates the default plugin configuration.
 func New() *Config {
 	return &Config{
-		BotAction:          BotActionPass,
-		LogLevel:           "INFO",
-		RobotsTXTFilePath:  "robots.txt",
-		UserAgentSourceURL: "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
+		BotAction:           BotActionLog,
+		CacheUpdateInterval: "1m",
+		LogLevel:            "INFO",
+		RobotsTXTFilePath:   "robots.txt",
+		RobotsSourceURL:     "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
 	}
 }
 
@@ -45,10 +48,15 @@ func (c *Config) ValidateConfig() error {
 	if !slices.Contains([]string{BotActionPass, BotActionBlock, BotActionPass}, c.BotAction) {
 		return fmt.Errorf("ValidateConfig: BotAction must be one of '%s', '%s', '%s'. Got '%s'", BotActionPass, BotActionBlock, BotActionPass, c.BotAction)
 	}
-	// UserAgentSourceURL
-	_, err := url.Parse(c.UserAgentSourceURL)
+	// RobotsSourceURL
+	_, err := url.Parse(c.RobotsSourceURL)
 	if err != nil {
-		return fmt.Errorf("ValidateConfig: UserAgentSourceURL must be a valid URL. Got '%s'", c.UserAgentSourceURL)
+		return fmt.Errorf("ValidateConfig: RobotsSourceURL must be a valid URL. Got '%s'", c.RobotsSourceURL)
+	}
+	//CacheUpdateInterval
+	_, err = time.ParseDuration(c.CacheUpdateInterval)
+	if err != nil {
+		return fmt.Errorf("ValidateConfig: CacheUpdateInterval must be a time duration string. Got '%s'", c.CacheUpdateInterval)
 	}
 
 	return nil

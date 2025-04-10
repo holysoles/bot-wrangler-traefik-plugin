@@ -25,5 +25,5 @@ run_local:
 restart_local:
 	docker compose -f docker-compose.local.yml restart
 
-stop-local:
+stop_local:
 	docker compose -f docker-compose.local.yml down

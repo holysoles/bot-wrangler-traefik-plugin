@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
-	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/useragent"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/botmanager"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 )
 
@@ -19,9 +19,9 @@ type Wrangler struct {
 	name               string
 
 	botAction          string
+	botUAManager       botmanager.BotUAManager
 	log                *logger.Log
 	template           *template.Template
-	userAgentSourceURL string
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -38,40 +38,50 @@ func New(ctx context.Context, next http.Handler, config *config.Config, name str
 
 	err := config.ValidateConfig()
 	if err != nil {
-		log.Error("unable to load configuration properly: " + err.Error())
+		log.Error("New: unable to load configuration properly - " + err.Error())
+		return nil, err
 	}
 
 	loadedTemplate, err := template.ParseFiles(config.RobotsTXTFilePath)
 	if err != nil {
-		log.Error("Unable to load robots.txt template: " + err.Error())
+		log.Error("New: Unable to load robots.txt template - " + err.Error())
 	}
+
+	uAMan, err := botmanager.New(config.RobotsSourceURL, config.CacheUpdateInterval)
+	if err != nil {
+		log.Error("New: Unable to initialize bot user agent list manager - " + err.Error())
+	}
+
 	return &Wrangler{
 		next: next,
 		name: name,
 
 		botAction: config.BotAction,
+		botUAManager: uAMan,
 		log:       log,
 		template:  loadedTemplate,
-		userAgentSourceURL: config.UserAgentSourceURL,
 	}, nil
 }
 
 func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	log := w.log
 	// get the current list of bad robots
-	badUAMap, err := useragent.GetBanned(w.userAgentSourceURL, log)
-	if err != nil {
-		log.Error("Unable to retrieve list of user agents: " + err.Error())
+	badUAMap, err := w.botUAManager.GetBotMap(log)
+	if err != nil || len(badUAMap) == 0 {
 		// fallback to just letting the request pass
+		eStr := "ServeHTTP: Unable to retrieve list of bot useragents"
+		if err != nil {
+			eStr += " - " + err.Error()
+		}
+		log.Error(eStr)
 		w.next.ServeHTTP(rw, req)
 		return
 	}
 
 	// if they are checking robots.txt, give them our list
-	path := req.URL.Path
-	log.Debug("requested Path:" + path)
-	if path == "/robots.txt" {
-		log.Debug("/robots.txt requested, rendering robots.txt with current ban list")
+	rPath := req.URL.Path
+	if rPath == "/robots.txt" {
+		log.Debug("ServeHTTP: /robots.txt requested, rendering with live block list")
 		uAList := make([]string, len(badUAMap))
 		i := 0
 		for k := range badUAMap {
@@ -87,15 +97,15 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// if its a normal request, see if they're on the bad robots list
 	uA := req.Header.Get("User-Agent")
 	uAInfo, uAInList := badUAMap[uA]
-	log.Debug("Got a request from user agent: '" + uA + "'")
+	log.Debug("ServeHTTP: Got a request from user agent: '" + uA + "'")
 	if !uAInList {
-		log.Debug("User agent not in ban list, passing traffic")
+		log.Debug("ServeHTTP: User agent not in ban list, passing traffic")
 		w.next.ServeHTTP(rw, req)
 		return
 	}
 
 	// handle outcome of the request for the bot
-	uALogStr := fmt.Sprintf("User agent '%s' considered AI Robot. Operator: %s, Respects Robots.txt?: %s, Function: %s, Description: %s", uA, uAInfo["operator"], uAInfo["respect"], uAInfo["function"], uAInfo["description"])
+	uALogStr := fmt.Sprintf("ServeHTTP: User agent '%s' considered AI Robot. Operator: %s, RespectsRobotsTxt: %s, Function: %s, Description: %s, RequestedPath: %s", uA, uAInfo["operator"], uAInfo["respect"], uAInfo["function"], uAInfo["description"], rPath)
 	switch w.botAction {
 	case config.BotActionLog:
 		log.Info(uALogStr)
