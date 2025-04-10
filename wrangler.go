@@ -34,6 +34,8 @@ func New(ctx context.Context, next http.Handler, config *config.Config, name str
 	config.LogLevel = strings.ToUpper(config.LogLevel)
 	log := logger.New(config.LogLevel)
 
+	config.BotAction = strings.ToUpper(config.BotAction)
+
 	err := config.ValidateConfig()
 	if err != nil {
 		log.Error("unable to load configuration properly: " + err.Error())
