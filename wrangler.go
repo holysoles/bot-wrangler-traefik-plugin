@@ -10,61 +10,33 @@ import (
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/useragent"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 )
-
-// Config the plugin configuration.
-type Config struct {
-	LogLevel           string    `json:"logLevel,omitempty"`
-	BotAction          BotAction `json:"botAction,omitempty"`
-	RobotsTXTFilePath  string    `json:"robotsTxtFilePath,omitempty"`
-	UserAgentSourceURL string    `json:"userAgentSourceUrl,omitempty"`
-}
-
-// CreateConfig creates the default plugin configuration.
-func CreateConfig() *Config {
-	return &Config{
-		BotAction:          ActionLog,
-		LogLevel:           "DEBUG", //TODO set INFO
-		RobotsTXTFilePath:  "robots.txt",
-		UserAgentSourceURL: "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
-
-	}
-}
-
-type BotAction int
-
-const (
-	ActionPass BotAction = iota
-	ActionLog
-	ActionBlock
-)
-
-var botActionName = map[BotAction]string{
-	ActionPass:  "pass",
-	ActionLog:   "log",
-	ActionBlock: "block",
-}
-
-func (b BotAction) String() string {
-	return botActionName[b]
-}
 
 type Wrangler struct {
 	next               http.Handler
 	name               string
 
-	botAction          BotAction
+	botAction          string
 	log                *logger.Log
 	template           *template.Template
 	userAgentSourceURL string
 }
 
+// CreateConfig creates the default plugin configuration.
+func CreateConfig() *config.Config {
+	return config.New()
+}
+
 // New creates a new plugin instance
-func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
+func New(ctx context.Context, next http.Handler, config *config.Config, name string) (http.Handler, error) {
 	config.LogLevel = strings.ToUpper(config.LogLevel)
 	log := logger.New(config.LogLevel)
 
-	// TODO validate config
+	err := config.ValidateConfig()
+	if err != nil {
+		log.Error("unable to load configuration properly: " + err.Error())
+	}
 
 	loadedTemplate, err := template.ParseFiles(config.RobotsTXTFilePath)
 	if err != nil {
@@ -122,12 +94,12 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// handle outcome of the request for the bot
 	uALogStr := fmt.Sprintf("User agent '%s' considered AI Robot. Operator: %s, Respects Robots.txt?: %s, Function: %s, Description: %s", uA, uAInfo["operator"], uAInfo["respect"], uAInfo["function"], uAInfo["description"])
 	switch w.botAction {
-	case ActionLog:
+	case config.BotActionLog:
 		log.Info(uALogStr)
 		fallthrough
-	case ActionPass:
+	case config.BotActionPass:
 		w.next.ServeHTTP(rw, req)
-	case ActionBlock:
+	case config.BotActionBlock:
 		log.Info(uALogStr)
 		// TODO provide any body/content indicating the ban?
 		rw.WriteHeader(http.StatusForbidden)

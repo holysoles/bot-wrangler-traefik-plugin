@@ -13,13 +13,13 @@ type Log struct {
 	logError *log.Logger
 }
 
-// New Initializes the logger for the plugins. Output configured by logLevel parameter
+// New Initializes the logger for the plugin. Output configured by logLevel parameter
 func New(logLevel string) *Log {
 	sourceName := "BotWranglerTraefikPlugin"
-	logDebug := log.New(io.Discard, "DEBUG - "+sourceName+":", log.Ldate|log.Ltime)
-	logInfo := log.New(io.Discard, "INFO - "+sourceName+":", log.Ldate|log.Ltime)
-	logWarn := log.New(io.Discard, "WARN - "+sourceName+":", log.Ldate|log.Ltime)
-	logError := log.New(io.Discard, "ERROR - "+sourceName+":", log.Ldate|log.Ltime)
+	logDebug := log.New(io.Discard, "DEBUG - "+sourceName+": ", log.Ldate|log.Ltime)
+	logInfo := log.New(io.Discard, "INFO - "+sourceName+": ", log.Ldate|log.Ltime)
+	logWarn := log.New(io.Discard, "WARN - "+sourceName+": ", log.Ldate|log.Ltime)
+	logError := log.New(io.Discard, "ERROR - "+sourceName+": ", log.Ldate|log.Ltime)
 
 	logError.SetOutput(os.Stderr)
 	switch logLevel {
