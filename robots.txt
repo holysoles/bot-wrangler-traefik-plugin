@@ -1,0 +1,4 @@
+{{ range $agent := .UserAgentList }}
+User-agent: {{ $agent }}
+{{- end }}
+Disallow: /

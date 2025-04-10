@@ -1,0 +1,35 @@
+services:
+  traefik:
+    image: "traefik:v3.0.0"
+    container_name: "traefik"
+    restart: unless-stopped
+    command:
+      - "--log.level=DEBUG"
+#      - "--accesslog"
+#      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+
+      - "--experimental.localplugins.wrangler.modulename=github.com/holysoles/bot-wrangler-traefik-plugin"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./:/plugins-local/src/github.com/holysoles/bot-wrangler-traefik-plugin
+      - './robots.txt:/robots.txt:ro'
+    ports:
+      - 8000:80
+      - 8080:8080
+
+  whoami:
+    image: traefik/whoami
+    container_name: "simple-service"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.router-bar.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.router-bar.entrypoints=web"
+
+      - "traefik.http.routers.router-bar.middlewares=bot-wrangler"
+      - "traefik.http.services.service-bar.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botAction=log"
