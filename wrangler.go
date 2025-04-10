@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"text/template"
+	"encoding/json"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/useragent"
@@ -101,7 +102,12 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		w.next.ServeHTTP(rw, req)
 	case config.BotActionBlock:
 		log.Info(uALogStr)
-		// TODO provide any body/content indicating the ban?
+		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusForbidden)
+		response := map[string]string{
+			"error": "Forbidden",
+			"message": "Your user agent is associated with a large language model (LLM) and is banned from accessing this resource due to scraping activities.",
+		}
+		json.NewEncoder(rw).Encode(response)
 	}
 }

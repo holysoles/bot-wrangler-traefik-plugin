@@ -6,8 +6,6 @@ import: github.com/holysoles/bot-wrangler-traefik-plugin
 
 summary: Middleware Plugin that helps you wrangle those pesky LLM data scrapers.
 
-# TODO
 testData:
-  Headers:
-    X-Demo: test
-    X-URL: '{{URL}}'
+  LogLevel: "INFO"
+  BotAction: "PASS"
