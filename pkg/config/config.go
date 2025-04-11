@@ -33,7 +33,7 @@ type Config struct {
 func New() *Config {
 	return &Config{
 		BotAction:           "LOG",
-		CacheUpdateInterval: "1m",
+		CacheUpdateInterval: "24h",
 		LogLevel:            "INFO",
 		RobotsTXTFilePath:   "robots.txt",
 		RobotsSourceURL:     "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
