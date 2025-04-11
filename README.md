@@ -41,6 +41,7 @@ The follow parameters are exposed to configure this plugin
 
 | Name | Default Value | Description |
 |------|---------------|-------------|
+|enabled|`true`|Whether or not the plugin should be enabled|
 |cacheUpdateInterval|`24h`|How frequently the robots list should be updated|
 |botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return 403)|
 |logLevel|`INFO`|THe log level for the plugin|

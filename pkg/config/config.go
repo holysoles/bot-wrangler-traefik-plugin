@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strconv"
 	"time"
 )
 
@@ -22,6 +23,7 @@ const (
 
 // Config the plugin configuration.
 type Config struct {
+	Enabled             string `json:"enabled,omitempty"`
 	BotAction           string `json:"botAction,omitempty"`
 	CacheUpdateInterval string `json:"cacheUpdateInterval,omitempty"`
 	LogLevel            string `json:"logLevel,omitempty"`
@@ -32,6 +34,7 @@ type Config struct {
 // New creates the default plugin configuration.
 func New() *Config {
 	return &Config{
+		Enabled:             "true",
 		BotAction:           "LOG",
 		CacheUpdateInterval: "24h",
 		LogLevel:            "INFO",
@@ -42,6 +45,11 @@ func New() *Config {
 
 // ValidateConfig provides a way to validate an initialized Config instance.
 func (c *Config) ValidateConfig() error {
+	// Enabled
+	_, err := strconv.ParseBool(c.Enabled)
+	if err != nil {
+		return err
+	}
 	// LogLevel
 	if !slices.Contains([]string{LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError}, c.LogLevel) {
 		return fmt.Errorf("ValidateConfig: LogLevel must be one of '%s', '%s', '%s', '%s'. Got '%s'", LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError, c.LogLevel)
@@ -51,7 +59,7 @@ func (c *Config) ValidateConfig() error {
 		return fmt.Errorf("ValidateConfig: BotAction must be one of '%s', '%s', '%s'. Got '%s'", BotActionPass, BotActionLog, BotActionBlock, c.BotAction)
 	}
 	// RobotsSourceURL
-	_, err := url.ParseRequestURI(c.RobotsSourceURL)
+	_, err = url.ParseRequestURI(c.RobotsSourceURL)
 	if err != nil {
 		return fmt.Errorf("ValidateConfig: RobotsSourceURL must be a valid URL. Got '%s'", c.RobotsSourceURL)
 	}
