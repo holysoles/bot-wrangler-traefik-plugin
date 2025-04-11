@@ -56,7 +56,7 @@ func TestGetBotIndex(t *testing.T) {
 	if err != nil {
 		t.Error("Unable to get robots index with default configuration. " + err.Error())
 	}
-	if len(botI) <= 0 {
+	if len(botI) == 0 {
 		t.Error("robots index with default configuration was empty")
 	}
 

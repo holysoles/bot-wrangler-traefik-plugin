@@ -3,7 +3,7 @@ package botmanager
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -11,7 +11,7 @@ import (
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 )
 
-// type BotUserAgent is the expected info to receive per bot from the index source. These are pointers so that we can validate if the source actually returned the expected fields.
+// BotUserAgent is the expected info to receive per bot from the index source. These are pointers so that we can validate if the source actually returned the expected fields.
 type BotUserAgent struct {
 	Operator    *string `json:"operator"`
 	Respect     *string `json:"respect"`
@@ -20,10 +20,10 @@ type BotUserAgent struct {
 	Description *string `json:"description"`
 }
 
-// type BotUserAgentIndex is the hashmap/dict to receive from the index source of bot_name: {info}
+// BotUserAgentIndex is the hashmap/dict to receive from the index source of bot_name: {info}.
 type BotUserAgentIndex map[string]BotUserAgent
 
-// type BotUAManager acts as a management layer around checking the current bot index, querying the index source, and refreshing the cache
+// BotUAManager acts as a management layer around checking the current bot index, querying the index source, and refreshing the cache.
 type BotUAManager struct {
 	cacheUpdateInterval time.Duration
 	url                 string
@@ -31,29 +31,29 @@ type BotUAManager struct {
 	botIndex            BotUserAgentIndex
 }
 
-// Validate checks that the generated BotUserAgentIndex has all required values
+// Validate checks that the generated BotUserAgentIndex has all required values.
 func (m *BotUserAgentIndex) Validate() error {
 	for _, bInfo := range *m {
 		if bInfo.Operator == nil {
-			return fmt.Errorf("missing operator field")
+			return errors.New("missing operator field")
 		}
 		if bInfo.Respect == nil {
-			return fmt.Errorf("missing respect field")
+			return errors.New("missing respect field")
 		}
 		if bInfo.Function == nil {
-			return fmt.Errorf("missing function field")
+			return errors.New("missing function field")
 		}
 		if bInfo.Frequency == nil {
-			return fmt.Errorf("missing frequency field")
+			return errors.New("missing frequency field")
 		}
 		if bInfo.Description == nil {
-			return fmt.Errorf("missing description field")
+			return errors.New("missing description field")
 		}
 	}
 	return nil
 }
 
-// New initializes a BotUAManager instance
+// New initializes a BotUAManager instance.
 func New(u string, i string) (*BotUAManager, error) {
 	// we validated the time duration earlier, so ignore any error now
 	iDur, _ := time.ParseDuration(i)
@@ -66,7 +66,7 @@ func New(u string, i string) (*BotUAManager, error) {
 	return &uAMan, err
 }
 
-// update fetches the latest robots.txt index from the configured source, stores it, and updates the timestamp
+// update fetches the latest robots.txt index from the configured source, stores it, and updates the timestamp.
 func (b *BotUAManager) update() error {
 	var bannedUA BotUserAgentIndex
 

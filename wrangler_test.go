@@ -22,7 +22,7 @@ func TestWranglerInit(t *testing.T) {
 	cfg := bot_wrangler_traefik_plugin.CreateConfig()
 
 	ctx := context.Background()
-	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
 	handler, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
 	if err != nil {
@@ -45,7 +45,7 @@ func TestWranglerInitBadConfig(t *testing.T) {
 	cfg.BotAction = "NOOP"
 
 	ctx := context.Background()
-	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
 	_, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
 	if err == nil {
@@ -59,7 +59,7 @@ func TestWranglerInitBadRobotsTxt(t *testing.T) {
 	cfg.RobotsTXTFilePath = "filenotexist.txt"
 
 	ctx := context.Background()
-	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
 	_, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
 	if err == nil {
@@ -73,7 +73,7 @@ func TestWranglerInitBadRobotsIndex(t *testing.T) {
 	cfg.RobotsSourceURL = "https://httpbin.org/status/404"
 
 	ctx := context.Background()
-	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
 	_, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
 	if err == nil {
@@ -85,11 +85,11 @@ func TestWranglerInitBadRobotsIndex(t *testing.T) {
 // TestWranglerRobotsTxt tests that the plugin renders a valid robots.txt exclusions file when requested
 func TestWranglerRobotsTxt(t *testing.T) {
 	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt")
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		t.Errorf("robots.txt page returned non-200 unexpectedly. Got: %d", res.StatusCode)
 	}
 	resBodyB, _ := io.ReadAll(res.Body)
-	resBody := string(resBodyB[:])
+	resBody := string(resBodyB)
 	want := regexp.MustCompile("(User-agent: .+)+\nDisallow: /")
 	if !want.MatchString(resBody) {
 		t.Errorf("robots.txt page does not match expected format. Got: %s", resBody)
@@ -128,7 +128,7 @@ func TestWranglerPassActions(t *testing.T) {
 	for _, s := range passScenarios{
 		res := getWranglerResponse(t, s.userAgent, s.botAction, "")
 		resBody, _ := io.ReadAll(res.Body)
-		resUnmodified := res.StatusCode == 200 && len(res.Header) == 0 && len(resBody) == 0
+		resUnmodified := res.StatusCode == http.StatusOK && len(res.Header) == 0 && len(resBody) == 0
 		if !resUnmodified {
 			t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' had response unexpectedly modified", s.botAction, s.userAgent)
 		}
@@ -138,8 +138,8 @@ func TestWranglerPassActions(t *testing.T) {
 // TestWranglerBlockAction tests the plugin behavior when a request, based on User-Agent, should be blocked
 func TestWranglerBlockAction(t *testing.T) {
 	type jsonBody struct {
-		Error string
-		Message string
+		Error   string `json:"error"`
+		Message string `json:"message"`
 	}
 	var blockedBody jsonBody
 	ua := BotUserAgent
@@ -150,7 +150,7 @@ func TestWranglerBlockAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := res.StatusCode == 403 && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is banned from accessing this resource due to scraping activities."
+	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is banned from accessing this resource due to scraping activities."
 	if !want {
 		t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' did not match expected response", action, BotUserAgent)
 	}
@@ -158,6 +158,7 @@ func TestWranglerBlockAction(t *testing.T) {
 
 // getWranglerResponse is a helper function to setup a context, plugin, responsewriter, etc to generate a response. UserAgent, Botaction, and request URL can be specified
 func getWranglerResponse(t *testing.T, uA string, bA string, url string) *http.Response {
+	t.Helper()
 	if url == "" {
 		url = "http://localhost"
 	}
@@ -167,7 +168,7 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string) *http.R
 	}
 
 	ctx := context.Background()
-	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
 	handler, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
 	if err != nil {

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// define constants for enum validation
+// define constants for enum validation.
 const (
 	BotActionPass  = "PASS"
 	BotActionLog   = "LOG"
@@ -40,7 +40,7 @@ func New() *Config {
 	}
 }
 
-// ValidateConfig provides a way to validate an initialized Config instance
+// ValidateConfig provides a way to validate an initialized Config instance.
 func (c *Config) ValidateConfig() error {
 	// LogLevel
 	if !slices.Contains([]string{LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError}, c.LogLevel) {
@@ -55,7 +55,7 @@ func (c *Config) ValidateConfig() error {
 	if err != nil {
 		return fmt.Errorf("ValidateConfig: RobotsSourceURL must be a valid URL. Got '%s'", c.RobotsSourceURL)
 	}
-	//CacheUpdateInterval
+	// CacheUpdateInterval
 	_, err = time.ParseDuration(c.CacheUpdateInterval)
 	if err != nil {
 		return fmt.Errorf("ValidateConfig: CacheUpdateInterval must be a time duration string. Got '%s'", c.CacheUpdateInterval)

@@ -7,8 +7,9 @@ import (
 )
 
 // init sets up the testing environment and helpers
-var testStdOut bytes.Buffer
-var testStdErr bytes.Buffer
+var testStdOut bytes.Buffer //nolint:gochecknoglobals
+var testStdErr bytes.Buffer //nolint:gochecknoglobals
+//nolint:gochecknoinits
 func init() {
 	stdOut = &testStdOut
 	stdErr = &testStdErr
