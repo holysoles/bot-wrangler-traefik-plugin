@@ -1,12 +1,18 @@
 # Bot Wrangler Traefik Plugin
 
+![GitHub License](https://img.shields.io/github/license/holysoles/bot-wrangler-traefik-plugin)
+[![codecov](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin/graph/badge.svg?token=1GCKDQSR7R)](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin)
+![Issues](https://img.shields.io/github/issues/holysoles/bot-wrangler-traefik-plugin)
+
 - [Bot Wrangler Traefik Plugin](#bot-wrangler-traefik-plugin)
 - [Features](#features)
 - [Usage](#usage)
   - [Considerations](#considerations)
   - [Configuration](#configuration)
-  - [Configuration Example](#configuration-example)
-  - [Local Mode](#local-mode)
+  - [Deployment](#deployment)
+    - [Generic](#generic)
+    - [Kubernetes](#kubernetes)
+    - [Local/Dev Mode](#localdev-mode)
 - [Credits](#credits)
 
 Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log and/or block traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessibility only to those desired.
@@ -26,6 +32,7 @@ LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-rob
 
 Please read if you plan to deploy this plugin!
 
+- Ensure that the `robots.txt` template is available to Traefik at startup. For Docker, this means passing the file in as a mount. For Kubernetes, mounting a the template in a ConfigMap is easiest.
 - The cache from ai-robots-txt is refreshed if expired during a request. While this is set (by default) to update every 24 hours, there will be a small response speed impact (<0.06s) on the request that causes the cache refresh.
 
 ## Configuration
@@ -40,7 +47,7 @@ The follow parameters are exposed to configure this plugin
 |robotsTxtFilePath|`robots.txt`| The file path to the robots.txt template file. You can customize the provided file as desired|
 |robotsSourceUrl|`https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json`|A URL to a JSON formatted robot user agent index. You can provide your own, but ensure it has the same JSON keys!|
 
-## Configuration Example
+## Deployment
 
 The Traefik static configuration must define the module name:
 
@@ -54,6 +61,10 @@ experimental:
 ```
 
 For actually including the plugin as middleware, you'll need to include it in Traefik's dynamic configuration. 
+
+### Generic
+
+After including the plugin module in Traefik's static configuration, you'll need to setup the dynamic configuration to actually use it.
 
 Here is an example of a file provider dynamic configuration (given here in YAML). note the `http.routers.my-router.middlewares` and `http.middlewares` sections:
 
@@ -84,7 +95,94 @@ http:
           botAction: BLOCK
 ```
 
-## Local Mode
+
+
+### Kubernetes
+
+1. Include Plugin in Traefik configuration
+
+If Traefik is deployed with the official helm chart, you'll need to include these values in your Values.yaml for the release:
+
+```yaml
+experimental:
+  plugins:
+    wrangler:
+      moduleName: "github.com/holysoles/bot-wrangler-traefik-plugin"
+      version: vX.Y.Z # find latest release here: https://github.com/holysoles/bot-wrangler-traefik-plugin/releases
+volumes:
+  - name: botwrangler-robots-template
+    mountPath: /etc/traefik/bot-wrangler/
+    type: configMap
+```
+
+2. Create configMap for robots.txt template
+
+We'll need to create the configMap being referenced (ensure its in the same namespace!):
+
+```yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: botwrangler-robots-template
+data:
+  robots.txt: |
+    {{ range $agent := .UserAgentList }}
+    User-agent: {{ $agent }}
+    {{- end }}
+    Disallow: /
+```
+
+3. Define Middleware
+
+Then we'll need to create the middleware object:
+
+```yaml
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: botwrangler
+spec:
+  plugin:
+    wrangler:
+      robotsTxtFilePath: /etc/traefik/bot-wrangler/robots.txt
+      # Any other config options go here
+```
+
+4. Apply the plugin
+
+As for actually **including** the middleware, you can either include the middleware per-IngressRoute:
+
+```yaml
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: whoami-ingress
+spec:
+  entryPoints:
+  - web
+  routes:
+  - kind: Rule
+    match: Host(`example.com`)
+    middlewares:
+    - name: botwrangler
+    services:
+    - name: whoami
+      port: 8080
+```
+
+Or per-entrypoint (in your Values.yaml) if you want to broadly apply the plugin:
+
+```yaml
+    additionalArguments:
+      - "--entrypoints.web.http.middlewares=traefik-botwrangler@kubernetescrd"
+      - "--entrypoints.websecure.http.middlewares=traefik-botwrangler@kubernetescrd"
+      - "--providers.kubernetescrd"
+```
+
+### Local/Dev Mode
 
 Traefik offers a developer mode that can be used for temporary testing of unpublished plugins.
 
