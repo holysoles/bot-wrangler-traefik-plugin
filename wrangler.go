@@ -1,27 +1,27 @@
-// Package plugbot_wrangler_traefik_plugin a plugin for managing bot traffic
+// Package bot_wrangler_traefik_plugin a plugin for managing bot traffic with automatically updating robots.txt and remediation actions for violations
 package bot_wrangler_traefik_plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"text/template"
-	"encoding/json"
 
-	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/botmanager"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 )
 
 type Wrangler struct {
-	next               http.Handler
-	name               string
+	next http.Handler
+	name string
 
-	botAction          string
-	botUAManager       botmanager.BotUAManager
-	log                *logger.Log
-	template           *template.Template
+	botAction    string
+	botUAManager *botmanager.BotUAManager
+	log          *logger.Log
+	template     *template.Template
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -38,42 +38,38 @@ func New(ctx context.Context, next http.Handler, config *config.Config, name str
 
 	err := config.ValidateConfig()
 	if err != nil {
-		log.Error("New: unable to load configuration properly - " + err.Error())
+		log.Error("New: unable to load configuration properly. " + err.Error())
 		return nil, err
 	}
-
 	loadedTemplate, err := template.ParseFiles(config.RobotsTXTFilePath)
 	if err != nil {
-		log.Error("New: Unable to load robots.txt template - " + err.Error())
+		log.Error("New: Unable to load robots.txt template. " + err.Error())
+		return nil, err
 	}
-
 	uAMan, err := botmanager.New(config.RobotsSourceURL, config.CacheUpdateInterval)
 	if err != nil {
-		log.Error("New: Unable to initialize bot user agent list manager - " + err.Error())
+		log.Error("New: Unable to initialize bot user agent list manager. " + err.Error())
+		return nil, err
 	}
 
 	return &Wrangler{
 		next: next,
 		name: name,
 
-		botAction: config.BotAction,
+		botAction:    config.BotAction,
 		botUAManager: uAMan,
-		log:       log,
-		template:  loadedTemplate,
+		log:          log,
+		template:     loadedTemplate,
 	}, nil
 }
 
 func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	log := w.log
 	// get the current list of bad robots
-	badUAMap, err := w.botUAManager.GetBotMap(log)
-	if err != nil || len(badUAMap) == 0 {
-		// fallback to just letting the request pass
-		eStr := "ServeHTTP: Unable to retrieve list of bot useragents"
-		if err != nil {
-			eStr += " - " + err.Error()
-		}
-		log.Error(eStr)
+	botUAIndex, err := w.botUAManager.GetBotIndex(log)
+	if err != nil || len(botUAIndex) == 0 {
+		// this condition is unexpected. If the index source is permanently bad, we would've failed initialization, and if temporarily bad, we wouldn't update the index cache
+		log.Error("ServeHTTP: Unable to retrieve list of bot useragents. " + err.Error())
 		w.next.ServeHTTP(rw, req)
 		return
 	}
@@ -82,9 +78,9 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rPath := req.URL.Path
 	if rPath == "/robots.txt" {
 		log.Debug("ServeHTTP: /robots.txt requested, rendering with live block list")
-		uAList := make([]string, len(badUAMap))
+		uAList := make([]string, len(botUAIndex))
 		i := 0
-		for k := range badUAMap {
+		for k := range botUAIndex {
 			uAList[i] = k
 			i++
 		}
@@ -96,7 +92,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// if its a normal request, see if they're on the bad robots list
 	uA := req.Header.Get("User-Agent")
-	uAInfo, uAInList := badUAMap[uA]
+	uAInfo, uAInList := botUAIndex[uA]
 	log.Debug("ServeHTTP: Got a request from user agent: '" + uA + "'")
 	if !uAInList {
 		log.Debug("ServeHTTP: User agent not in ban list, passing traffic")
@@ -105,7 +101,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// handle outcome of the request for the bot
-	uALogStr := fmt.Sprintf("ServeHTTP: User agent '%s' considered AI Robot. Operator: %s, RespectsRobotsTxt: %s, Function: %s, Description: %s, RequestedPath: %s", uA, uAInfo["operator"], uAInfo["respect"], uAInfo["function"], uAInfo["description"], rPath)
+	uALogStr := fmt.Sprintf("ServeHTTP: User agent '%s' considered AI Robot. Operator: '%s', RespectsRobotsTxt: '%s', Function: '%s', Description: '%s', RequestedPath: '%s'", uA, *uAInfo.Operator, *uAInfo.Respect, *uAInfo.Function, *uAInfo.Description, rPath)
 	switch w.botAction {
 	case config.BotActionLog:
 		log.Info(uALogStr)
@@ -117,7 +113,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusForbidden)
 		response := map[string]string{
-			"error": "Forbidden",
+			"error":   "Forbidden",
 			"message": "Your user agent is associated with a large language model (LLM) and is banned from accessing this resource due to scraping activities.",
 		}
 		json.NewEncoder(rw).Encode(response)

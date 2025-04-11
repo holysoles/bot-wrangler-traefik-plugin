@@ -1,3 +1,4 @@
+// Package config provides utilities for loading and validating provided configuration to the plugin
 package config
 
 import (
@@ -31,7 +32,7 @@ type Config struct {
 // New creates the default plugin configuration.
 func New() *Config {
 	return &Config{
-		BotAction:           BotActionLog,
+		BotAction:           "LOG",
 		CacheUpdateInterval: "1m",
 		LogLevel:            "INFO",
 		RobotsTXTFilePath:   "robots.txt",
@@ -39,17 +40,18 @@ func New() *Config {
 	}
 }
 
+// ValidateConfig provides a way to validate an initialized Config instance
 func (c *Config) ValidateConfig() error {
 	// LogLevel
 	if !slices.Contains([]string{LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError}, c.LogLevel) {
 		return fmt.Errorf("ValidateConfig: LogLevel must be one of '%s', '%s', '%s', '%s'. Got '%s'", LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError, c.LogLevel)
 	}
 	// BotAction
-	if !slices.Contains([]string{BotActionPass, BotActionBlock, BotActionPass}, c.BotAction) {
-		return fmt.Errorf("ValidateConfig: BotAction must be one of '%s', '%s', '%s'. Got '%s'", BotActionPass, BotActionBlock, BotActionPass, c.BotAction)
+	if !slices.Contains([]string{BotActionPass, BotActionLog, BotActionBlock}, c.BotAction) {
+		return fmt.Errorf("ValidateConfig: BotAction must be one of '%s', '%s', '%s'. Got '%s'", BotActionPass, BotActionLog, BotActionBlock, c.BotAction)
 	}
 	// RobotsSourceURL
-	_, err := url.Parse(c.RobotsSourceURL)
+	_, err := url.ParseRequestURI(c.RobotsSourceURL)
 	if err != nil {
 		return fmt.Errorf("ValidateConfig: RobotsSourceURL must be a valid URL. Got '%s'", c.RobotsSourceURL)
 	}
