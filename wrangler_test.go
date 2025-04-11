@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"text/template"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
@@ -81,10 +82,9 @@ func TestWranglerInitBadRobotsIndex(t *testing.T) {
 	}
 }
 
-
-// TestWranglerRobotsTxt tests that the plugin renders a valid robots.txt exclusions file when requested
-func TestWranglerRobotsTxt(t *testing.T) {
-	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt")
+// TestWranglerDisabled tests that the plugin simply returns and exits early 
+func TestWranglerDisabled(t *testing.T) {
+	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", false)
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("robots.txt page returned non-200 unexpectedly. Got: %d", res.StatusCode)
 	}
@@ -93,6 +93,15 @@ func TestWranglerRobotsTxt(t *testing.T) {
 	want := regexp.MustCompile("(User-agent: .+)+\nDisallow: /")
 	if !want.MatchString(resBody) {
 		t.Errorf("robots.txt page does not match expected format. Got: %s", resBody)
+	}
+}
+
+
+// TestWranglerRobotsTxt tests that the plugin renders a valid robots.txt exclusions file when requested
+func TestWranglerRobotsTxt(t *testing.T) {
+	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", true)
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("disabled plugin request returned non-200 unexpectedly. Got: %d", res.StatusCode)
 	}
 }
 
@@ -126,7 +135,7 @@ func TestWranglerPassActions(t *testing.T) {
 	}
 
 	for _, s := range passScenarios{
-		res := getWranglerResponse(t, s.userAgent, s.botAction, "")
+		res := getWranglerResponse(t, s.userAgent, s.botAction, "", false)
 		resBody, _ := io.ReadAll(res.Body)
 		resUnmodified := res.StatusCode == http.StatusOK && len(res.Header) == 0 && len(resBody) == 0
 		if !resUnmodified {
@@ -144,7 +153,7 @@ func TestWranglerBlockAction(t *testing.T) {
 	var blockedBody jsonBody
 	ua := BotUserAgent
 	action := config.BotActionBlock
-	res := getWranglerResponse(t, ua, action, "")
+	res := getWranglerResponse(t, ua, action, "", false)
 	resBody, _ := io.ReadAll(res.Body)
 	err := json.Unmarshal(resBody, &blockedBody)
 	if err != nil {
@@ -157,7 +166,7 @@ func TestWranglerBlockAction(t *testing.T) {
 }
 
 // getWranglerResponse is a helper function to setup a context, plugin, responsewriter, etc to generate a response. UserAgent, Botaction, and request URL can be specified
-func getWranglerResponse(t *testing.T, uA string, bA string, url string) *http.Response {
+func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable bool) *http.Response {
 	t.Helper()
 	if url == "" {
 		url = "http://localhost"
@@ -166,6 +175,9 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string) *http.R
 	if bA != "" {
 		cfg.BotAction = bA
 	}
+	if disable {
+		cfg.Enabled = "false"
+	} 
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})

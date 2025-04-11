@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"text/template"
+	"strconv"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/botmanager"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
@@ -19,6 +20,7 @@ type Wrangler struct {
 	next http.Handler
 	name string
 
+	enabled      bool
 	botAction    string
 	botUAManager *botmanager.BotUAManager
 	log          *logger.Log
@@ -53,10 +55,12 @@ func New(_ context.Context, next http.Handler, config *config.Config, name strin
 		return nil, err
 	}
 
+	enable, _ := strconv.ParseBool(config.Enabled)
 	return &Wrangler{
 		next: next,
 		name: name,
 
+		enabled:      enable,
 		botAction:    config.BotAction,
 		botUAManager: uAMan,
 		log:          log,
@@ -66,6 +70,14 @@ func New(_ context.Context, next http.Handler, config *config.Config, name strin
 
 func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	log := w.log
+
+	// make sure we should process the request.
+	if ! w.enabled {
+		log.Debug("ServeHTTP: Plugin is not enabled.")
+		w.next.ServeHTTP(rw, req)
+		return
+	}
+
 	// get the current list of bad robots
 	botUAIndex, err := w.botUAManager.GetBotIndex(log)
 	if err != nil || len(botUAIndex) == 0 {

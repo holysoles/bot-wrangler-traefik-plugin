@@ -29,6 +29,16 @@ func TestNewCustomConfig(t *testing.T) {
 	}
 }
 
+// TestConfigBadEnabled overrides a default config with an invalid Enabled value and checks that an error is raised by ValidateConfig().
+func TestConfigBadEnabled(t *testing.T) {
+	c := New()
+	c.Enabled = "_____"
+	err := c.ValidateConfig()
+	if err == nil {
+		t.Error("ValidateConfig didn't fail an invalid Enabled value.")
+	}
+}
+
 // TestConfigBadLogLevel overrides a default config with an invalid LogLevel and checks that an error is raised by ValidateConfig().
 func TestConfigBadLogLevel(t *testing.T) {
 	c := New()
