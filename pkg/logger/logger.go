@@ -1,5 +1,5 @@
 // Package logger is a simple wrapper around the builtin "log" package that provides log levels
-// It'd be nice to use zerolog to match Traefik's log output, but Yaegi does not allow use of the "unsafe" module, which is a transient dependency
+// It'd be nice to use zerolog to match Traefik's log output, but Yaegi does not allow use of the "unsafe" module, which is a transient dependency.
 package logger
 
 import (
@@ -8,6 +8,7 @@ import (
 	"os"
 )
 
+// Log struct for the logger.
 type Log struct {
 	logDebug *log.Logger
 	logInfo  *log.Logger
@@ -15,10 +16,10 @@ type Log struct {
 	logError *log.Logger
 }
 
-var stdOut io.Writer = os.Stdout
-var stdErr io.Writer = os.Stderr
+var stdOut io.Writer = os.Stdout //nolint:gochecknoglobals
+var stdErr io.Writer = os.Stderr //nolint:gochecknoglobals
 
-// New Initializes the logger for the plugin. Output configured by logLevel parameter
+// New Initializes the logger for the plugin. Output configured by logLevel parameter.
 func New(logLevel string) *Log {
 	sourceName := "BotWranglerTraefikPlugin"
 	logDebug := log.New(io.Discard, "DEBUG - "+sourceName+": ", log.Ldate|log.Ltime)
@@ -46,22 +47,22 @@ func New(logLevel string) *Log {
 	}
 }
 
-// Debug writes a Debug level message to the log
+// Debug writes a Debug level message to the log.
 func (l *Log) Debug(str string) {
 	l.logDebug.Printf("%s", str)
 }
 
-// Info writes a Info level message to the log
+// Info writes a Info level message to the log.
 func (l *Log) Info(str string) {
 	l.logInfo.Printf("%s", str)
 }
 
-// Warning writes a Warn (Warning) level message to the log
+// Warn writes a Warn (Warning) level message to the log.
 func (l *Log) Warn(str string) {
 	l.logWarn.Printf("%s", str)
 }
 
-// Error writes a Error level message to the log
+// Error writes a Error level message to the log.
 func (l *Log) Error(str string) {
 	l.logError.Printf("%s", str)
 }

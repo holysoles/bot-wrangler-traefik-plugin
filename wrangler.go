@@ -1,5 +1,5 @@
-// Package bot_wrangler_traefik_plugin a plugin for managing bot traffic with automatically updating robots.txt and remediation actions for violations
-package bot_wrangler_traefik_plugin
+// Package bot_wrangler_traefik_plugin a plugin for managing bot traffic with automatically updating robots.txt and remediation actions for violations.
+package bot_wrangler_traefik_plugin //nolint:revive
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 )
 
+// Wrangler used to manage a instance of the plugin.
 type Wrangler struct {
 	next http.Handler
 	name string
@@ -29,8 +30,8 @@ func CreateConfig() *config.Config {
 	return config.New()
 }
 
-// New creates a new plugin instance
-func New(ctx context.Context, next http.Handler, config *config.Config, name string) (http.Handler, error) {
+// New creates a new plugin instance.
+func New(_ context.Context, next http.Handler, config *config.Config, name string) (http.Handler, error) {
 	config.LogLevel = strings.ToUpper(config.LogLevel)
 	log := logger.New(config.LogLevel)
 
@@ -84,9 +85,12 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			uAList[i] = k
 			i++
 		}
-		w.template.Execute(rw, map[string][]string{
+		err := w.template.Execute(rw, map[string][]string{
 			"UserAgentList": uAList,
 		})
+		if err != nil {
+			log.Error("ServeHTTP: Error rendering robots.txt template. " + err.Error())
+		}
 		return
 	}
 
@@ -116,6 +120,10 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			"error":   "Forbidden",
 			"message": "Your user agent is associated with a large language model (LLM) and is banned from accessing this resource due to scraping activities.",
 		}
-		json.NewEncoder(rw).Encode(response)
+		err := json.NewEncoder(rw).Encode(response)
+		if err != nil {
+			log.Error("ServeHTTP: Error when rendering JSON for ban response. Sending no content in reply. Error: " + err.Error())
+			return
+		}
 	}
 }

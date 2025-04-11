@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-//TestNewDefaultConfig calls config.New() to generate default configuration and validates the configuration
+// TestNewDefaultConfig calls config.New() to generate default configuration and validates the configuration.
 func TestNewDefaultConfig(t *testing.T) {
 	c := New()
 	err := c.ValidateConfig()
@@ -14,7 +14,7 @@ func TestNewDefaultConfig(t *testing.T) {
 	}
 }
 
-//TestNewDefaultConfig calls config.New() to generate default configuration, overrides each property, and validates the configuration
+// TestNewDefaultConfig calls config.New() to generate default configuration, overrides each property, and validates the configuration.
 func TestNewCustomConfig(t *testing.T) {
 	c := New()
 	c.BotAction = "BLOCK"
@@ -27,10 +27,9 @@ func TestNewCustomConfig(t *testing.T) {
 	if err != nil {
 		t.Errorf("ValidateConfig() did not pass a custom configuration that should be considered valid. " + err.Error())
 	}
-
 }
 
-//TestConfigBadLogLevel overrides a default config with an invalid LogLevel and checks that an error is raised by ValidateConfig()
+// TestConfigBadLogLevel overrides a default config with an invalid LogLevel and checks that an error is raised by ValidateConfig().
 func TestConfigBadLogLevel(t *testing.T) {
 	c := New()
 	c.LogLevel = "NONE"
@@ -40,7 +39,7 @@ func TestConfigBadLogLevel(t *testing.T) {
 	}
 }
 
-//TestConfigBadBotAction overrides a default config with an invalid BotAction and checks that an error is raised by ValidateConfig()
+// TestConfigBadBotAction overrides a default config with an invalid BotAction and checks that an error is raised by ValidateConfig().
 func TestConfigBadBotAction(t *testing.T) {
 	c := New()
 	c.BotAction = "Do a Flip"
@@ -50,7 +49,7 @@ func TestConfigBadBotAction(t *testing.T) {
 	}
 }
 
-//TestConfigBadRobotsSourceURL overrides a default config with an invalid RobotsSourceURL and checks that an error is raised by ValidateConfig()
+// TestConfigBadRobotsSourceURL overrides a default config with an invalid RobotsSourceURL and checks that an error is raised by ValidateConfig().
 func TestConfigBadRobotsSourceURL(t *testing.T) {
 	c := New()
 	c.RobotsSourceURL = "this is not a URL"
@@ -60,7 +59,7 @@ func TestConfigBadRobotsSourceURL(t *testing.T) {
 	}
 }
 
-//TestConfigBadCacheUpdateInterval overrides a default config with an invalid CacheUpdateInterval and checks that an error is raised by ValidateConfig()
+// TestConfigBadCacheUpdateInterval overrides a default config with an invalid CacheUpdateInterval and checks that an error is raised by ValidateConfig().
 func TestConfigBadCacheUpdateInterval(t *testing.T) {
 	c := New()
 	c.CacheUpdateInterval = "something time.ParseDuration can't parse"

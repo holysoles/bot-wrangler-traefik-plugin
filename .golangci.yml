@@ -1,48 +1,17 @@
+version: "2"
 run:
   timeout: 3m
-  skip-files: []
-  skip-dirs: []
 
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-  golint:
-    min-confidence: 0
-  gocyclo:
-    min-complexity: 12
-  goconst:
-    min-len: 5
-    min-occurrences: 4
-  misspell:
-    locale: US
-  funlen:
-    lines: -1
-    statements: 50
-  godox:
-    keywords:
-      - FIXME
-  gofumpt:
-    extra-rules: true
+formatters:
+  settings:
+    gofumpt:
+      extra-rules: true
 
 linters:
-  enable-all: true
+  default: all
   disable:
-    - deadcode # deprecated
-    - exhaustivestruct # deprecated
-    - golint # deprecated
-    - ifshort # deprecated
-    - interfacer # deprecated
-    - maligned # deprecated
-    - nosnakecase # deprecated
-    - scopelint # deprecated
-    - scopelint # deprecated
-    - structcheck # deprecated
-    - varcheck # deprecated
     - sqlclosecheck # not relevant (SQL)
     - rowserrcheck # not relevant (SQL)
-    - execinquery # not relevant (SQL)
     - cyclop # duplicate of gocyclo
     - bodyclose # Too many false positives: https://github.com/timakin/bodyclose/issues/30
     - dupl
@@ -53,23 +22,42 @@ linters:
     - wsl
     - exhaustive
     - exhaustruct
-    - goerr113
+    - err113
     - wrapcheck
-    - ifshort
+    #- ifshort # unknown
     - noctx
     - lll
-    - gomnd
+    #- gomnd # unknown
     - forbidigo
     - varnamelen
+    # added
+    - depguard
+  exclusions:
+    rules:
+      - path: (.+)_test.go
+        linters:
+          - goconst
+          - funlen
+          - godot
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    gocyclo:
+      min-complexity: 12
+    goconst:
+      min-len: 5
+      min-occurrences: 4
+    misspell:
+      locale: US
+    funlen:
+      lines: -1
+      statements: 50
+    godox:
+      keywords:
+        - FIXME
 
-issues:
-  exclude-use-default: false
-  max-per-linter: 0
-  max-same-issues: 0
-  exclude: []
-  exclude-rules:
-    - path: (.+)_test.go
-      linters:
-        - goconst
-        - funlen
-        - godot
+# issues:
+#   max-per-linter: 0
+#   max-same-issues: 0
