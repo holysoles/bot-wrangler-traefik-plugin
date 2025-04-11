@@ -1,8 +1,5 @@
 # Bot Wrangler Traefik Plugin
 
-> [!WARNING]  
-> This project is still in active development and is not ready to be included through the official plugin catalog.
-
 - [Bot Wrangler Traefik Plugin](#bot-wrangler-traefik-plugin)
 - [Features](#features)
 - [Usage](#usage)
@@ -29,7 +26,7 @@ LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-rob
 
 Please read if you plan to deploy this plugin!
 
-- The cache from ai-robots-txt is refreshed if expired during a request. While this is set by default to update every 24 hours, there will be a small response speed impact (<0.06s) on the request that causes the cache refresh.
+- The cache from ai-robots-txt is refreshed if expired during a request. While this is set (by default) to update every 24 hours, there will be a small response speed impact (<0.06s) on the request that causes the cache refresh.
 
 ## Configuration
 
@@ -53,7 +50,7 @@ experimental:
   plugins:
     wrangler:
       moduleName: github.com/holysoles/bot-wrangler-traefik-plugin
-      version: vX.Y.Z # find latest release
+      version: vX.Y.Z # find latest release here: https://github.com/holysoles/bot-wrangler-traefik-plugin/releases
 ```
 
 For actually including the plugin as middleware, you'll need to include it in Traefik's dynamic configuration. 
