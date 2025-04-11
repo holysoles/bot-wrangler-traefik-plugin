@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
-	"text/template"
+	"errors"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
@@ -65,6 +65,41 @@ func TestWranglerInitBadRobotsTxt(t *testing.T) {
 	_, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
 	if err == nil {
 		t.Error("New() did not return an error when provided invalid robots.txt file")
+	}
+}
+
+// badResponseWriter acts as a mock to force writing response content to fail
+type badResponseWriter struct {
+	http.ResponseWriter
+}
+func (f *badResponseWriter) Write(b []byte) (int, error) {
+	return 0, errors.New("write failed")
+}
+
+// TestWranglerInitBadRobotsTemplate tests plugin behavior when the robots.txt template file cannot be rendered
+func TestWranglerInitBadRobotsTemplate(t *testing.T) {
+	cfg := bot_wrangler_traefik_plugin.CreateConfig()
+
+	ctx := context.Background()
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+
+	w, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := &badResponseWriter{ResponseWriter: httptest.NewRecorder()}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/robots.txt", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.ServeHTTP(recorder, req)
+	
+	// TODO check log.Error() was called
+	errLogged := true
+	if errLogged {
+		t.Error("rendering invalid template file during request did not write an error")
 	}
 }
 
