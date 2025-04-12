@@ -1,31 +1,37 @@
-package bot_wrangler_traefik_plugin_test
+package bot_wrangler_traefik_plugin //nolint:revive
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
-	"errors"
 
-	"github.com/holysoles/bot-wrangler-traefik-plugin"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 )
 
 // most common user agent as of 3/31/2025 from https://microlink.io/user-agents
 const RealUserAgent string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
 const BotUserAgent string = "GPTBot"
 
+// We need to suppress logging, and in some cases validate that logs were written
+// init sets up the testing environment and helpers
+var testStdOut bytes.Buffer //nolint:gochecknoglobals
+var testStdErr bytes.Buffer //nolint:gochecknoglobals
+
 // TestWranglerInit tests that the plugin can be initialized (along with config), and can process a simple request cleanly
 func TestWranglerInit(t *testing.T) {
-	cfg := bot_wrangler_traefik_plugin.CreateConfig()
+	cfg := CreateConfig()
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	handler, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
+	handler, err := New(ctx, next, cfg, "wrangler")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,13 +48,13 @@ func TestWranglerInit(t *testing.T) {
 
 // TestWranglerInitBadConfig tests plugin behavior when invalid configuration is provided at startup
 func TestWranglerInitBadConfig(t *testing.T) {
-	cfg := bot_wrangler_traefik_plugin.CreateConfig()
+	cfg := CreateConfig()
 	cfg.BotAction = "NOOP"
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	_, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
+	_, err := New(ctx, next, cfg, "wrangler")
 	if err == nil {
 		t.Error("New() did not return an error when provided invalid config")
 	}
@@ -56,13 +62,13 @@ func TestWranglerInitBadConfig(t *testing.T) {
 
 // TestWranglerInitBadRobotsTxt tests plugin behavior when the robots.txt template file cannot be found at startup
 func TestWranglerInitBadRobotsTxt(t *testing.T) {
-	cfg := bot_wrangler_traefik_plugin.CreateConfig()
+	cfg := CreateConfig()
 	cfg.RobotsTXTFilePath = "filenotexist.txt"
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	_, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
+	_, err := New(ctx, next, cfg, "wrangler")
 	if err == nil {
 		t.Error("New() did not return an error when provided invalid robots.txt file")
 	}
@@ -72,21 +78,26 @@ func TestWranglerInitBadRobotsTxt(t *testing.T) {
 type badResponseWriter struct {
 	http.ResponseWriter
 }
-func (f *badResponseWriter) Write(b []byte) (int, error) {
+
+func (f *badResponseWriter) Write(_ []byte) (int, error) {
 	return 0, errors.New("write failed")
 }
 
 // TestWranglerInitBadRobotsTemplate tests plugin behavior when the robots.txt template file cannot be rendered
 func TestWranglerInitBadRobotsTemplate(t *testing.T) {
-	cfg := bot_wrangler_traefik_plugin.CreateConfig()
+	testStdErr.Reset()
+	cfg := CreateConfig()
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	w, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
+	h, err := New(ctx, next, cfg, "wrangler")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	w, _ := h.(*Wrangler)
+	w.log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
 
 	recorder := &badResponseWriter{ResponseWriter: httptest.NewRecorder()}
 
@@ -94,30 +105,65 @@ func TestWranglerInitBadRobotsTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.ServeHTTP(recorder, req)
-	
-	// TODO check log.Error() was called
-	errLogged := true
-	if errLogged {
-		t.Error("rendering invalid template file during request did not write an error")
+	h.ServeHTTP(recorder, req)
+
+	msg := "ServeHTTP: Error rendering robots.txt template."
+	want := regexp.MustCompile("ERROR - .+" + msg + ".?")
+	got := testStdErr.String()
+	if !want.MatchString(got) {
+		t.Error("rendering invalid template file during request did not write the expected error. Got: " + got)
+	}
+}
+
+// TestWranglerBadBanResponse tests the plugin behavior when a ban response cannot be properly encoded to JSON
+func TestWranglerBadBanResponse(t *testing.T) {
+	testStdErr.Reset()
+	cfg := CreateConfig()
+	cfg.BotAction = config.BotActionBlock
+	ua := BotUserAgent
+
+	ctx := context.Background()
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+
+	h, err := New(ctx, next, cfg, "wrangler")
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, _ := h.(*Wrangler)
+	w.log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+
+	recorder := &badResponseWriter{ResponseWriter: httptest.NewRecorder()}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("User-Agent", ua)
+	h.ServeHTTP(recorder, req)
+
+	msg := "ServeHTTP: Error when rendering JSON for ban response. Sending no content in reply. Error:"
+	want := regexp.MustCompile("ERROR - .+" + msg + ".?")
+	got := testStdErr.String()
+	if !want.MatchString(got) {
+		t.Error("failing to render ban response JSON did not write the expected error. Got: " + got)
 	}
 }
 
 // TestWranglerInitBadRobotsIndex tests plugin behavior when an invalid robots index is supplied
 func TestWranglerInitBadRobotsIndex(t *testing.T) {
-	cfg := bot_wrangler_traefik_plugin.CreateConfig()
+	cfg := CreateConfig()
 	cfg.RobotsSourceURL = "https://httpbin.org/status/404"
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	_, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
+	_, err := New(ctx, next, cfg, "wrangler")
 	if err == nil {
 		t.Error("New() did not return an error when provided invalid source to load robots index")
 	}
 }
 
-// TestWranglerDisabled tests that the plugin simply returns and exits early 
+// TestWranglerDisabled tests that the plugin simply returns and exits early
 func TestWranglerDisabled(t *testing.T) {
 	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", false)
 	if res.StatusCode != http.StatusOK {
@@ -131,7 +177,6 @@ func TestWranglerDisabled(t *testing.T) {
 	}
 }
 
-
 // TestWranglerRobotsTxt tests that the plugin renders a valid robots.txt exclusions file when requested
 func TestWranglerRobotsTxt(t *testing.T) {
 	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", true)
@@ -142,7 +187,7 @@ func TestWranglerRobotsTxt(t *testing.T) {
 
 // TestWranglerPassActions tests scenarios where a request (with User-Agent provided) is expected to pass
 func TestWranglerPassActions(t *testing.T) {
-	type scenario struct{
+	type scenario struct {
 		userAgent string
 		botAction string
 	}
@@ -169,7 +214,7 @@ func TestWranglerPassActions(t *testing.T) {
 		},
 	}
 
-	for _, s := range passScenarios{
+	for _, s := range passScenarios {
 		res := getWranglerResponse(t, s.userAgent, s.botAction, "", false)
 		resBody, _ := io.ReadAll(res.Body)
 		resUnmodified := res.StatusCode == http.StatusOK && len(res.Header) == 0 && len(resBody) == 0
@@ -206,18 +251,18 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 	if url == "" {
 		url = "http://localhost"
 	}
-	cfg := bot_wrangler_traefik_plugin.CreateConfig()
+	cfg := CreateConfig()
 	if bA != "" {
 		cfg.BotAction = bA
 	}
 	if disable {
 		cfg.Enabled = "false"
-	} 
+	}
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	handler, err := bot_wrangler_traefik_plugin.New(ctx, next, cfg, "wrangler")
+	handler, err := New(ctx, next, cfg, "wrangler")
 	if err != nil {
 		t.Fatal(err)
 	}
