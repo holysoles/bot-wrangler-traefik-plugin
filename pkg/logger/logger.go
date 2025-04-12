@@ -1,4 +1,4 @@
-// Package logger is a simple wrapper around the builtin "log" package that provides log levels
+// Package logger is a simple wrapper around the builtin "log" package that provides log levels.
 // It'd be nice to use zerolog to match Traefik's log output, but Yaegi does not allow use of the "unsafe" module, which is a transient dependency.
 package logger
 
@@ -16,27 +16,29 @@ type Log struct {
 	logError *log.Logger
 }
 
-var stdOut io.Writer = os.Stdout //nolint:gochecknoglobals
-var stdErr io.Writer = os.Stderr //nolint:gochecknoglobals
-
-// New Initializes the logger for the plugin. Output configured by logLevel parameter.
+// New initializes the logger for the plugin. Output configured by logLevel parameter.
 func New(logLevel string) *Log {
+	return NewFromWriters(logLevel, os.Stdout, os.Stderr)
+}
+
+// NewFromWriters initializes the logger with the provided io.Writers for the standard log stream, and error log stream.
+func NewFromWriters(logLevel string, o io.Writer, e io.Writer) *Log {
 	sourceName := "BotWranglerTraefikPlugin"
 	logDebug := log.New(io.Discard, "DEBUG - "+sourceName+": ", log.Ldate|log.Ltime)
 	logInfo := log.New(io.Discard, "INFO - "+sourceName+": ", log.Ldate|log.Ltime)
 	logWarn := log.New(io.Discard, "WARN - "+sourceName+": ", log.Ldate|log.Ltime)
 	logError := log.New(io.Discard, "ERROR - "+sourceName+": ", log.Ldate|log.Ltime)
 
-	logError.SetOutput(stdErr)
+	logError.SetOutput(e)
 	switch logLevel {
 	case "DEBUG":
-		logDebug.SetOutput(stdOut)
+		logDebug.SetOutput(o)
 		fallthrough
 	case "INFO":
-		logInfo.SetOutput(stdOut)
+		logInfo.SetOutput(o)
 		fallthrough
 	case "WARN":
-		logWarn.SetOutput(stdOut)
+		logWarn.SetOutput(o)
 	}
 
 	return &Log{

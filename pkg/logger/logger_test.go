@@ -4,23 +4,27 @@ import (
 	"bytes"
 	"testing"
 	"regexp"
+	"reflect"
 )
 
 // init sets up the testing environment and helpers
 var testStdOut bytes.Buffer //nolint:gochecknoglobals
 var testStdErr bytes.Buffer //nolint:gochecknoglobals
-//nolint:gochecknoinits
-func init() {
-	stdOut = &testStdOut
-	stdErr = &testStdErr
+
+// TestNewLog tests that a logger can be initialized by the simpler New() function
+func TestNewLog(t *testing.T) {
+	log := New("DEBUG")
+	got := reflect.TypeOf(log).String()
+	if got != "*logger.Log" {
+		t.Error("Unexpected type returned from logger.New() constructor. Got: " + got)
+	}
 }
 
-
-// TestNewLogDebug calls Log.New() with a DEBUG log level and validates its output
+// TestNewLogDebug calls Log.NewFromWriters() with a DEBUG log level and validates its output
 func TestNewLogDebug(t *testing.T) {
 	testStdOut.Reset()
 	testStdErr.Reset()
-	log := New("DEBUG")
+	log := NewFromWriters("DEBUG", &testStdOut, &testStdErr)
 	msg := "Test debug!"
 	want := regexp.MustCompile("DEBUG - .+" + msg + "\n")
 	log.Debug(msg)
@@ -38,7 +42,7 @@ func TestNewLogDebug(t *testing.T) {
 func TestNewLogInfo(t *testing.T) {
 	testStdOut.Reset()
 	testStdErr.Reset()
-	log := New("INFO")
+	log := NewFromWriters("INFO", &testStdOut, &testStdErr)
 	msg := "Test info!"
 	want := regexp.MustCompile("INFO - .+" + msg + "\n")
 	log.Info(msg)
@@ -56,7 +60,7 @@ func TestNewLogInfo(t *testing.T) {
 func TestNewLogWarn(t *testing.T) {
 	testStdOut.Reset()
 	testStdErr.Reset()
-	log := New("WARN")
+	log := NewFromWriters("WARN", &testStdOut, &testStdErr)
 	msg := "Test warn!"
 	want := regexp.MustCompile("WARN - .+" + msg + "\n")
 	log.Warn(msg)
@@ -75,7 +79,7 @@ func TestNewLogWarn(t *testing.T) {
 func TestNewLogError(t *testing.T) {
 	testStdOut.Reset()
 	testStdErr.Reset()
-	log := New("ERROR")
+	log := NewFromWriters("ERROR", &testStdOut, &testStdErr)
 	msg := "Test error!"
 	want := regexp.MustCompile("ERROR - .+" + msg + "\n")
 	log.Error(msg)
