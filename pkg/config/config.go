@@ -14,6 +14,7 @@ const (
 	BotActionPass  = "PASS"
 	BotActionLog   = "LOG"
 	BotActionBlock = "BLOCK"
+	BotActionProxy = "PROXY"
 
 	LogLevelDebug  = "DEBUG"
 	LogLevelInfo   = "INFO"
@@ -25,6 +26,7 @@ const (
 type Config struct {
 	Enabled             string `json:"enabled,omitempty"`
 	BotAction           string `json:"botAction,omitempty"`
+	BotProxyURL         string `json:"botProxyUrl,omitempty"`
 	CacheUpdateInterval string `json:"cacheUpdateInterval,omitempty"`
 	LogLevel            string `json:"logLevel,omitempty"`
 	RobotsTXTFilePath   string `json:"robotsTxtFilePath,omitempty"`
@@ -36,6 +38,7 @@ func New() *Config {
 	return &Config{
 		Enabled:             "true",
 		BotAction:           "LOG",
+		BotProxyURL:         "",
 		CacheUpdateInterval: "24h",
 		LogLevel:            "INFO",
 		RobotsTXTFilePath:   "robots.txt",
@@ -55,8 +58,15 @@ func (c *Config) ValidateConfig() error {
 		return fmt.Errorf("ValidateConfig: LogLevel must be one of '%s', '%s', '%s', '%s'. Got '%s'", LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError, c.LogLevel)
 	}
 	// BotAction
-	if !slices.Contains([]string{BotActionPass, BotActionLog, BotActionBlock}, c.BotAction) {
-		return fmt.Errorf("ValidateConfig: BotAction must be one of '%s', '%s', '%s'. Got '%s'", BotActionPass, BotActionLog, BotActionBlock, c.BotAction)
+	if !slices.Contains([]string{BotActionPass, BotActionLog, BotActionBlock, BotActionProxy}, c.BotAction) {
+		return fmt.Errorf("ValidateConfig: BotAction must be one of '%s', '%s', '%s', '%s'. Got '%s'", BotActionPass, BotActionLog, BotActionBlock, BotActionProxy, c.BotAction)
+	}
+	// BotProxyURL
+	if c.BotProxyURL != "" {
+		_, err = url.ParseRequestURI(c.BotProxyURL)
+		if err != nil {
+			return fmt.Errorf("ValidateConfig: BotProxyURL must be a valid URL. Got '%s'", c.BotProxyURL)
+		}
 	}
 	// RobotsSourceURL
 	_, err = url.ParseRequestURI(c.RobotsSourceURL)

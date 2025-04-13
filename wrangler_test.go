@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"fmt"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
@@ -74,6 +75,20 @@ func TestWranglerInitBadRobotsTxt(t *testing.T) {
 	}
 }
 
+// TestWranglerInitBadBotProxyURL tests plugin behavior when the BotProxy URL provided is invalid
+func TestWranglerInitBadBotProxyURL(t *testing.T) {
+	cfg := CreateConfig()
+	cfg.BotProxyURL = "%%"
+
+	ctx := context.Background()
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+
+	_, err := New(ctx, next, cfg, "wrangler")
+	if err == nil {
+		t.Error("New() did not return an error when provided invalid bot proxy URL")
+	}
+}
+
 // badResponseWriter acts as a mock to force writing response content to fail
 type badResponseWriter struct {
 	http.ResponseWriter
@@ -115,8 +130,8 @@ func TestWranglerInitBadRobotsTemplate(t *testing.T) {
 	}
 }
 
-// TestWranglerBadBanResponse tests the plugin behavior when a ban response cannot be properly encoded to JSON
-func TestWranglerBadBanResponse(t *testing.T) {
+// TestWranglerBadBlockResponse tests the plugin behavior when a block response cannot be properly encoded to JSON
+func TestWranglerBadBlockResponse(t *testing.T) {
 	testStdErr.Reset()
 	cfg := CreateConfig()
 	cfg.BotAction = config.BotActionBlock
@@ -141,11 +156,11 @@ func TestWranglerBadBanResponse(t *testing.T) {
 	req.Header.Set("User-Agent", ua)
 	h.ServeHTTP(recorder, req)
 
-	msg := "ServeHTTP: Error when rendering JSON for ban response. Sending no content in reply. Error:"
+	msg := "ServeHTTP: Error when rendering JSON for block response. Sending no content in reply. Error:"
 	want := regexp.MustCompile("ERROR - .+" + msg + ".?")
 	got := testStdErr.String()
 	if !want.MatchString(got) {
-		t.Error("failing to render ban response JSON did not write the expected error. Got: " + got)
+		t.Error("failing to render block response JSON did not write the expected error. Got: " + got)
 	}
 }
 
@@ -161,6 +176,43 @@ func TestWranglerInitBadRobotsIndex(t *testing.T) {
 	if err == nil {
 		t.Error("New() did not return an error when provided invalid source to load robots index")
 	}
+}
+
+// getWranglerResponse is a helper function to setup a context, plugin, responsewriter, etc to generate a response. UserAgent, Botaction, and request URL can be specified
+func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable bool) *http.Response {
+	t.Helper()
+	if url == "" {
+		url = "http://localhost"
+	}
+	cfg := CreateConfig()
+	if bA != "" {
+		cfg.BotAction = bA
+	}
+	if disable {
+		cfg.Enabled = "false"
+	}
+
+	ctx := context.Background()
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+
+	handler, err := New(ctx, next, cfg, "wrangler")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if uA != "" {
+		req.Header.Set("User-Agent", uA)
+	}
+	handler.ServeHTTP(recorder, req)
+	res := recorder.Result()
+	return res
 }
 
 // TestWranglerDisabled tests that the plugin simply returns and exits early
@@ -239,45 +291,88 @@ func TestWranglerBlockAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is banned from accessing this resource due to scraping activities."
+	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities."
 	if !want {
 		t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' did not match expected response", action, BotUserAgent)
 	}
 }
 
-// getWranglerResponse is a helper function to setup a context, plugin, responsewriter, etc to generate a response. UserAgent, Botaction, and request URL can be specified
-func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable bool) *http.Response {
-	t.Helper()
-	if url == "" {
-		url = "http://localhost"
-	}
+// TestWranglerProxyAction tests that the plugin proxies bot requests when specified via config, to the specified backend server
+func TestWranglerProxyAction(t *testing.T) {
+	want := "the backend server has been reached by the reverse proxy"
+	backendServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Helper()
+		_, err := fmt.Fprint(w, want)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer backendServer.Close()
+
 	cfg := CreateConfig()
-	if bA != "" {
-		cfg.BotAction = bA
-	}
-	if disable {
-		cfg.Enabled = "false"
-	}
+	cfg.BotProxyURL = backendServer.URL
+	cfg.BotAction = config.BotActionProxy
+	ua := BotUserAgent
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	handler, err := New(ctx, next, cfg, "wrangler")
+	h, err := New(ctx, next, cfg, "wrangler")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	recorder := httptest.NewRecorder()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("User-Agent", ua)
+	h.ServeHTTP(recorder, req)
+
+	got := recorder.Body.String()
+	if got != want {
+		t.Error("the BotProxy did not forward the response to the backend server")
+	}
+}
+
+// TestWranglerProxyActionNoInit tests that the plugin yields blocked responses when a request should be proxied but the proxy wasnt initialized properly
+func TestWranglerProxyActionNoInit(t *testing.T) {
+	type jsonBody struct {
+		Error   string `json:"error"`
+		Message string `json:"message"`
+	}
+	var blockedBody jsonBody
+	cfg := CreateConfig()
+	cfg.BotAction = config.BotActionProxy
+	ua := BotUserAgent
+
+	ctx := context.Background()
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+
+	h, err := New(ctx, next, cfg, "wrangler")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if uA != "" {
-		req.Header.Set("User-Agent", uA)
+	recorder := httptest.NewRecorder()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/", nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	handler.ServeHTTP(recorder, req)
+	req.Header.Set("User-Agent", ua)
+	h.ServeHTTP(recorder, req)
+
 	res := recorder.Result()
-	return res
+	resBody, _ := io.ReadAll(res.Body)
+	err = json.Unmarshal(resBody, &blockedBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities."
+	if !want {
+		t.Errorf("request from bot that should've been proxied and failed did not return a blocked fallback response")
+	}
 }

@@ -58,6 +58,15 @@ func TestConfigBadBotAction(t *testing.T) {
 		t.Error("ValidateConfig didn't fail an invalid BotAction.")
 	}
 }
+// TestConfigBadBotProxyURL overrides a default config with an invalid BotProxyURL and checks that an error is raised by ValidateConfig().
+func TestConfigBadBotProxyURL(t *testing.T) {
+	c := New()
+	c.BotProxyURL = "this is not a URL"
+	err := c.ValidateConfig()
+	if err == nil {
+		t.Error("ValidateConfig didn't fail an invalid BotProxyURL.")
+	}
+}
 
 // TestConfigBadRobotsSourceURL overrides a default config with an invalid RobotsSourceURL and checks that an error is raised by ValidateConfig().
 func TestConfigBadRobotsSourceURL(t *testing.T) {

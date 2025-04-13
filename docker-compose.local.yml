@@ -30,6 +30,19 @@ services:
 
       - "traefik.http.routers.router-bar.middlewares=bot-wrangler"
       - "traefik.http.services.service-bar.loadbalancer.server.port=80"
-      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botaction=BLOCK"
+      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botaction=PROXY"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.loglevel=DEBUG"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.cacheUpdateInterval=1m"
+      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botProxyUrl=http://backend:80"
+
+  backend:
+    image: traefik/whoami
+    container_name: "backend"
+    restart: unless-stopped
+    ports:
+      - 5000:80
+
+  # tarpit:
+  #   build: ./nepenthes/docker/
+  #   ports:
+  #     - 8893:8893
