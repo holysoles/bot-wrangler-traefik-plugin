@@ -4,20 +4,30 @@
 [![codecov](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin/graph/badge.svg?token=1GCKDQSR7R)](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin)
 ![Issues](https://img.shields.io/github/issues/holysoles/bot-wrangler-traefik-plugin)
 
+Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log, block, or otherwise handle traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessibility only to those desired.
+
+LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt). Any queries to a service where this middleware is implemented will provide this list when `/robots.txt` is queried. If a request is from a bot in the LLM bot list, meaning its ignoring `robots.txt`, a configurable remediation action is taken:
+
+- `PASS`: Do nothing (no-op)
+- `LOG`: write a log message about the visitor, the default behavior
+- `BLOCK`: reject the request with a 403 error
+- `PROXY`: proxy the request to a "tarpit" or other service to handle bot traffic, such as [Nepenthes](https://zadzmo.org/code/nepenthes/), [iocaine](https://iocaine.madhouse-project.org), etc
+
+## Table Of Contents
+
 - [Bot Wrangler Traefik Plugin](#bot-wrangler-traefik-plugin)
+  - [Table Of Contents](#table-of-contents)
 - [Features](#features)
 - [Usage](#usage)
   - [Considerations](#considerations)
   - [Configuration](#configuration)
+    - ["Tarpits" to Send Bots to](#tarpits-to-send-bots-to)
   - [Deployment](#deployment)
     - [Generic](#generic)
     - [Kubernetes](#kubernetes)
     - [Local/Dev Mode](#localdev-mode)
+- [Contributions](#contributions)
 - [Credits](#credits)
-
-Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log and/or block traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessibility only to those desired.
-
-LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt). Any queries to a service where this middleware is implemented will provide this list when `/robots.txt` is queried. If a request is from a bot in the LLM bot list, meaning its ignoring `robots.txt`, the user agent may be logged (and blocked if desired) with a 403 response.
 
 # Features
 
@@ -33,6 +43,7 @@ LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-rob
 Please read if you plan to deploy this plugin!
 
 - Ensure that the `robots.txt` template is available to Traefik at startup. For Docker, this means passing the file in as a mount. For Kubernetes, mounting a the template in a ConfigMap is easiest.
+- The reverse proxy to the `botProxyUrl` is unbuffered. If you are passing this request to _another_ reverse proxy in front of a tarpit-style application, ensure proxy buffering is disabled.
 - The cache from ai-robots-txt is refreshed if expired during a request. While this is set (by default) to update every 24 hours, there will be a small response speed impact (<0.06s) on the request that causes the cache refresh.
 
 ## Configuration
@@ -43,10 +54,28 @@ The follow parameters are exposed to configure this plugin
 |------|---------------|-------------|
 |enabled|`true`|Whether or not the plugin should be enabled|
 |cacheUpdateInterval|`24h`|How frequently the robots list should be updated|
-|botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return 403)|
+|botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return 403), `PROXY` (log and proxy to `botProxyUrl`)|
+|botProxyUrl|``|The URL to pass a bot's request to, if `PROXY` is the set `botAction`|
 |logLevel|`INFO`|THe log level for the plugin|
 |robotsTxtFilePath|`robots.txt`| The file path to the robots.txt template file. You can customize the provided file as desired|
 |robotsSourceUrl|`https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json`|A URL to a JSON formatted robot user agent index. You can provide your own, but ensure it has the same JSON keys!|
+
+### "Tarpits" to Send Bots to
+
+There are many applications that folks have wrote that are meant to handle LLM in traffic in some way to waste their time, usually based off Markov Chains, or even a local LLM instance to generate some random text. Some you need to provide training data to, some are already trained. Some are more malicious in nature than others, so deploy at your own risk!
+
+I have not tested this plugin with this list, nor is it an exhaustive list of all projects in this space. If you find this plugin has issues with one, please open an issue. Thanks to iocaine for providing this initial list!
+
+  - [iocaine](https://iocaine.madhouse-project.org/)
+  - [Nepenthes](https://zadzmo.org/code/nepenthes/)
+  - [Quixotic](https://marcusb.org/hacks/quixotic.html)
+  - [marko](https://codeberg.org/timmc/marko/)
+  - [Poison the WeLLMs](https://codeberg.org/MikeCoats/poison-the-wellms)
+  - [django-llm-poison](https://github.com/Fingel/django-llm-poison)
+  - [konterfai](https://codeberg.org/konterfai/konterfai)
+  - [caddy-defender](https://github.com/JasonLovesDoggo/caddy-defender)
+  - [markov-tarpit](https://git.rys.io/libre/markov-tarpit)
+  - [spigot](https://github.com/gw1urf/spigot)
 
 ## Deployment
 
@@ -95,8 +124,6 @@ http:
           logLevel: INFO
           botAction: BLOCK
 ```
-
-
 
 ### Kubernetes
 
@@ -191,8 +218,13 @@ To use a plugin in local mode, the Traefik static configuration must define the 
 
 A test dev instance can be easily setup by using commands in the provided makefile (e.g. `make run_local`, `make restart_local`) and modifying the `docker-compose.local.yml` file.
 
+# Contributions
+
+Contributions to this project are welcome! Please use conventional commits, and retain a linear git history.
+
 # Credits
 
 Special thanks to the following projects:
 - [ai.robots.txt](https://github.com/ai-robots-txt/ai.robots.txt) as an essential information source for this tool
-- [Ashley McNamara](https://github.com/ashleymcnamara/gophers) for the icon
+- [Ashley McNamara](https://github.com/ashleymcnamara/gophers) for the icon!
+- [crowdsec-bouncer-traefik-plugin](https://github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin) for inspiration as a well-written Traefik plugin

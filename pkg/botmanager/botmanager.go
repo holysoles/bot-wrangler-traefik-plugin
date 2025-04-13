@@ -68,7 +68,7 @@ func New(u string, i string) (*BotUAManager, error) {
 
 // update fetches the latest robots.txt index from the configured source, stores it, and updates the timestamp.
 func (b *BotUAManager) update() error {
-	var bannedUA BotUserAgentIndex
+	var blockedUA BotUserAgentIndex
 
 	req, err := http.NewRequest(http.MethodGet, b.url, nil)
 	if err != nil {
@@ -86,15 +86,15 @@ func (b *BotUAManager) update() error {
 		return err
 	}
 
-	err = json.Unmarshal(resBody, &bannedUA)
+	err = json.Unmarshal(resBody, &blockedUA)
 	if err != nil {
 		return err
 	}
-	err = bannedUA.Validate()
+	err = blockedUA.Validate()
 	if err != nil {
 		return err
 	}
-	b.botIndex = bannedUA
+	b.botIndex = blockedUA
 	b.lastUpdate = time.Now()
 	return nil
 }
