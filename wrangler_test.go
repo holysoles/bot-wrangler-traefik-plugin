@@ -32,10 +32,11 @@ func TestWranglerInit(t *testing.T) {
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	handler, err := New(ctx, next, cfg, "wrangler")
+	h, err := New(ctx, next, cfg, "wrangler")
 	if err != nil {
 		t.Fatal(err)
 	}
+	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
 
 	recorder := httptest.NewRecorder()
 
@@ -44,7 +45,7 @@ func TestWranglerInit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	handler.ServeHTTP(recorder, req)
+	h.ServeHTTP(recorder, req)
 }
 
 // TestWranglerInitBadConfig tests plugin behavior when invalid configuration is provided at startup
@@ -111,8 +112,7 @@ func TestWranglerInitBadRobotsTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	w, _ := h.(*Wrangler)
-	w.log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
 
 	recorder := &badResponseWriter{ResponseWriter: httptest.NewRecorder()}
 
@@ -144,8 +144,7 @@ func TestWranglerBadBlockResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, _ := h.(*Wrangler)
-	w.log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
 
 	recorder := &badResponseWriter{ResponseWriter: httptest.NewRecorder()}
 
@@ -195,10 +194,11 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
 
-	handler, err := New(ctx, next, cfg, "wrangler")
+	h, err := New(ctx, next, cfg, "wrangler")
 	if err != nil {
 		t.Fatal(err)
 	}
+	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
 
 	recorder := httptest.NewRecorder()
 
@@ -210,7 +210,7 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 	if uA != "" {
 		req.Header.Set("User-Agent", uA)
 	}
-	handler.ServeHTTP(recorder, req)
+	h.ServeHTTP(recorder, req)
 	res := recorder.Result()
 	return res
 }
@@ -321,6 +321,7 @@ func TestWranglerProxyAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
 
 	recorder := httptest.NewRecorder()
 
@@ -355,6 +356,7 @@ func TestWranglerProxyActionNoInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
 
 	recorder := httptest.NewRecorder()
 

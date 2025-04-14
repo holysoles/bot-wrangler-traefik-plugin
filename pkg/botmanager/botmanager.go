@@ -29,6 +29,7 @@ type BotUAManager struct {
 	url                 string
 	lastUpdate          time.Time
 	botIndex            BotUserAgentIndex
+	log                 *logger.Log
 }
 
 // Validate checks that the generated BotUserAgentIndex has all required values.
@@ -54,13 +55,14 @@ func (m *BotUserAgentIndex) Validate() error {
 }
 
 // New initializes a BotUAManager instance.
-func New(u string, i string) (*BotUAManager, error) {
+func New(u string, i string, l *logger.Log) (*BotUAManager, error) {
 	// we validated the time duration earlier, so ignore any error now
 	iDur, _ := time.ParseDuration(i)
 
 	uAMan := BotUAManager{
 		url:                 u,
 		cacheUpdateInterval: iDur,
+		log:                 l,
 	}
 	err := uAMan.update()
 	return &uAMan, err
@@ -100,17 +102,17 @@ func (b *BotUAManager) update() error {
 }
 
 // GetBotIndex is an exported function to retrieve the current robots.txt index. It will refreshed the cached copy if necessary.
-func (b *BotUAManager) GetBotIndex(log *logger.Log) (BotUserAgentIndex, error) {
+func (b *BotUAManager) GetBotIndex() (BotUserAgentIndex, error) {
 	var err error
 
-	log.Debug("GetBotIndex: blocklist last updated at " + b.lastUpdate.Format(time.RFC1123))
+	b.log.Debug("GetBotIndex: blocklist last updated at " + b.lastUpdate.Format(time.RFC1123))
 
 	nextUpdate := b.lastUpdate.Add(b.cacheUpdateInterval)
 	if time.Now().Compare(nextUpdate) >= 0 {
-		log.Info("GetBotIndex: cache expired, updating")
+		b.log.Info("GetBotIndex: cache expired, updating")
 		err = b.update()
 	} else {
-		log.Debug("GetBotIndex: cache has not expired. Next update due " + nextUpdate.Format(time.RFC1123))
+		b.log.Debug("GetBotIndex: cache has not expired. Next update due " + nextUpdate.Format(time.RFC1123))
 	}
 
 	return b.botIndex, err
