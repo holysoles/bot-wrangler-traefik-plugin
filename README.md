@@ -55,7 +55,7 @@ The follow parameters are exposed to configure this plugin
 |enabled|`true`|Whether or not the plugin should be enabled|
 |cacheUpdateInterval|`24h`|How frequently the robots list should be updated|
 |botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return 403), `PROXY` (log and proxy to `botProxyUrl`)|
-|botProxyUrl|``|The URL to pass a bot's request to, if `PROXY` is the set `botAction`|
+|botProxyUrl|`""`|The URL to pass a bot's request to, if `PROXY` is the set `botAction`|
 |logLevel|`INFO`|THe log level for the plugin|
 |robotsTxtFilePath|`robots.txt`| The file path to the robots.txt template file. You can customize the provided file as desired|
 |robotsSourceUrl|`https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json`|A URL to a JSON formatted robot user agent index. You can provide your own, but ensure it has the same JSON keys!|
