@@ -25,7 +25,7 @@ func TestNewCustomConfig(t *testing.T) {
 	err := c.ValidateConfig()
 
 	if err != nil {
-		t.Errorf("ValidateConfig() did not pass a custom configuration that should be considered valid. " + err.Error())
+		t.Error("ValidateConfig() did not pass a custom configuration that should be considered valid. " + err.Error())
 	}
 }
 

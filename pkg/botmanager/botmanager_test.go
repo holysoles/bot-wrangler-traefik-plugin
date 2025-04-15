@@ -9,12 +9,11 @@ import (
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 )
 
-var testStdOut bytes.Buffer //nolint:gochecknoglobals
-var testStdErr bytes.Buffer //nolint:gochecknoglobals
+var testLogOut bytes.Buffer //nolint:gochecknoglobals
 
 // TestNewBotManager calls botmanager.New() with default configuration and validates its properties
 func TestNewBotManager(t *testing.T) {
-	log := logger.NewFromWriters("DEBUG", &testStdOut, &testStdErr)
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	tStart := time.Now()
 	c := config.New()
 	b, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
@@ -31,7 +30,7 @@ func TestNewBotManager(t *testing.T) {
 
 // TestBotManagerBadURL tests exceptions inside BotUAManager.update() are properly handled and returned. Also validates that custom RobotsSourceURL config is respected.
 func TestBotManagerBadURL(t *testing.T) {
-	log := logger.NewFromWriters("DEBUG", &testStdOut, &testStdErr)
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 
 	c.RobotsSourceURL = "%%"
@@ -55,7 +54,7 @@ func TestBotManagerBadURL(t *testing.T) {
 
 // TestGetBotIndex tests that a default configed BotUAManager can retrieve an index of robots
 func TestGetBotIndex(t *testing.T) {
-	log := logger.NewFromWriters("DEBUG", &testStdOut, &testStdErr)
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
 	botI, err := b.GetBotIndex()
@@ -76,7 +75,7 @@ func TestGetBotIndex(t *testing.T) {
 
 // TestBoxIndexCacheRefresh tests that a call to GetBotIndex() triggers a cache refresh if the cache is considered expired
 func TestBotIndexCacheRefresh(t *testing.T) {
-	log := logger.NewFromWriters("DEBUG", &testStdOut, &testStdErr)
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	c.CacheUpdateInterval = "5ns"
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
@@ -92,7 +91,7 @@ func TestBotIndexCacheRefresh(t *testing.T) {
 
 // TestBotIndexBadUpdate tests that a cache refresh attempt does not update the index if query returns invalid data
 func TestBotIndexBadUpdate(t *testing.T) {
-	log := logger.NewFromWriters("DEBUG", &testStdOut, &testStdErr)
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	c.CacheUpdateInterval = "5ns"
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
@@ -100,8 +99,11 @@ func TestBotIndexBadUpdate(t *testing.T) {
 	firstUpdate := b.lastUpdate
 	b.url = "https://httpbin.org/json"
 	time.Sleep(b.cacheUpdateInterval)
-	_, _ = b.GetBotIndex()
+	_, err := b.GetBotIndex()
 	if b.lastUpdate != firstUpdate {
 		t.Error("BotUAManager updated the cache with invalid values during a refresh")
+	}
+	if err == nil {
+		t.Error("BotUAManager.GetBotIndex() did not return an error during a problematic refresh")
 	}
 }

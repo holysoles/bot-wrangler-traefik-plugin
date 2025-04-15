@@ -22,8 +22,7 @@ const BotUserAgent string = "GPTBot"
 
 // We need to suppress logging, and in some cases validate that logs were written
 // init sets up the testing environment and helpers
-var testStdOut bytes.Buffer //nolint:gochecknoglobals
-var testStdErr bytes.Buffer //nolint:gochecknoglobals
+var testLogOut bytes.Buffer //nolint:gochecknoglobals
 
 // TestWranglerInit tests that the plugin can be initialized (along with config), and can process a simple request cleanly
 func TestWranglerInit(t *testing.T) {
@@ -36,10 +35,13 @@ func TestWranglerInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	w, ok := h.(*Wrangler)
+	if !ok {
+		t.Error("unable to assert handler as type Wrangler")
+	}
+	w.log = logger.NewFromWriter(config.LogLevelDebug, &testLogOut)
 
 	recorder := httptest.NewRecorder()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +103,7 @@ func (f *badResponseWriter) Write(_ []byte) (int, error) {
 
 // TestWranglerInitBadRobotsTemplate tests plugin behavior when the robots.txt template file cannot be rendered
 func TestWranglerInitBadRobotsTemplate(t *testing.T) {
-	testStdErr.Reset()
+	testLogOut.Reset()
 	cfg := CreateConfig()
 
 	ctx := context.Background()
@@ -112,10 +114,13 @@ func TestWranglerInitBadRobotsTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	w, ok := h.(*Wrangler)
+	if !ok {
+		t.Error("unable to assert handler as type Wrangler")
+	}
+	w.log = logger.NewFromWriter(config.LogLevelError, &testLogOut)
 
 	recorder := &badResponseWriter{ResponseWriter: httptest.NewRecorder()}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/robots.txt", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -123,16 +128,16 @@ func TestWranglerInitBadRobotsTemplate(t *testing.T) {
 	h.ServeHTTP(recorder, req)
 
 	msg := "ServeHTTP: Error rendering robots.txt template."
-	want := regexp.MustCompile("ERROR - .+" + msg + ".?")
-	got := testStdErr.String()
+	want := regexp.MustCompile(`.* level=ERROR msg="` + msg + `.+".*`)
+	got := testLogOut.String()
 	if !want.MatchString(got) {
-		t.Error("rendering invalid template file during request did not write the expected error. Got: " + got)
+		t.Errorf("rendering invalid template file during request did not write the expected error message. Wanted: msg=\"%s\". Got: %s", msg, got)
 	}
 }
 
 // TestWranglerBadBlockResponse tests the plugin behavior when a block response cannot be properly encoded to JSON
 func TestWranglerBadBlockResponse(t *testing.T) {
-	testStdErr.Reset()
+	testLogOut.Reset()
 	cfg := CreateConfig()
 	cfg.BotAction = config.BotActionBlock
 	ua := BotUserAgent
@@ -144,10 +149,13 @@ func TestWranglerBadBlockResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	w, ok := h.(*Wrangler)
+	if !ok {
+		t.Error("unable to assert handler as type Wrangler")
+	}
+	w.log = logger.NewFromWriter(config.LogLevelError, &testLogOut)
 
 	recorder := &badResponseWriter{ResponseWriter: httptest.NewRecorder()}
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -156,10 +164,10 @@ func TestWranglerBadBlockResponse(t *testing.T) {
 	h.ServeHTTP(recorder, req)
 
 	msg := "ServeHTTP: Error when rendering JSON for block response. Sending no content in reply. Error:"
-	want := regexp.MustCompile("ERROR - .+" + msg + ".?")
-	got := testStdErr.String()
+	want := regexp.MustCompile(".*level=ERROR msg=\"" + msg + "(.+)?\".*")
+	got := testLogOut.String()
 	if !want.MatchString(got) {
-		t.Error("failing to render block response JSON did not write the expected error. Got: " + got)
+		t.Errorf("failing to render block response JSON did not write the expected error. Wanted: '%s' Got: %s", msg, got)
 	}
 }
 
@@ -198,10 +206,13 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	w, ok := h.(*Wrangler)
+	if !ok {
+		t.Error("unable to assert handler as type Wrangler")
+	}
+	w.log = logger.NewFromWriter(config.LogLevelInfo, &testLogOut)
 
 	recorder := httptest.NewRecorder()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -291,9 +302,16 @@ func TestWranglerBlockAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities."
+	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && 
+		blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities."
 	if !want {
 		t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' did not match expected response", action, BotUserAgent)
+	}
+	wantLog := regexp.MustCompile(`.* level=INFO msg="ServeHTTP: User agent '`+ua+`' considered AI Robot." pluginName=bot-wrangler-traefik-plugin userAgent="?`+ua+
+		`"? sourceIP="?.*"? requestedPath="?.*"? remediationAction=BLOCK operator="?.+"? respectsRobotsTxt="?.+"? function="?.+"? description="?.+"?` + "\n")
+	got := testLogOut.String()
+	if !wantLog.MatchString(got) {
+		t.Error("blocked bot request did not log expected info. Got: " + got)
 	}
 }
 
@@ -321,10 +339,13 @@ func TestWranglerProxyAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	w, ok := h.(*Wrangler)
+	if !ok {
+		t.Error("unable to assert handler as type Wrangler")
+	}
+	w.log = logger.NewFromWriter(config.LogLevelDebug, &testLogOut)
 
 	recorder := httptest.NewRecorder()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -356,10 +377,13 @@ func TestWranglerProxyActionNoInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.(*Wrangler).log = logger.NewFromWriters(config.LogLevelDebug, &testStdOut, &testStdErr)
+	w, ok := h.(*Wrangler)
+	if !ok {
+		t.Error("unable to assert handler as type Wrangler")
+	}
+	w.log = logger.NewFromWriter(config.LogLevelDebug, &testLogOut)
 
 	recorder := httptest.NewRecorder()
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/", nil)
 	if err != nil {
 		t.Fatal(err)

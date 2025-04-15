@@ -3,10 +3,11 @@ package botmanager
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
+	"reflect"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 )
@@ -35,20 +36,12 @@ type BotUAManager struct {
 // Validate checks that the generated BotUserAgentIndex has all required values.
 func (m *BotUserAgentIndex) Validate() error {
 	for _, bInfo := range *m {
-		if bInfo.Operator == nil {
-			return errors.New("missing operator field")
-		}
-		if bInfo.Respect == nil {
-			return errors.New("missing respect field")
-		}
-		if bInfo.Function == nil {
-			return errors.New("missing function field")
-		}
-		if bInfo.Frequency == nil {
-			return errors.New("missing frequency field")
-		}
-		if bInfo.Description == nil {
-			return errors.New("missing description field")
+		r := reflect.ValueOf(bInfo)
+		// it'd be better to range over r.NumField(), but yaegi is panicking when loading the plugin when we use that
+		for i, fN:= range []string{"Operator", "Respect", "Function", "Frequency", "Description"} {
+			if r.Field(i).IsNil() {
+				return fmt.Errorf("missing required field '%s' on retrieved bot index entry", fN)
+			}
 		}
 	}
 	return nil
