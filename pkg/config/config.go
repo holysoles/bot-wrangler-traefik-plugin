@@ -16,10 +16,10 @@ const (
 	BotActionBlock = "BLOCK"
 	BotActionProxy = "PROXY"
 
-	LogLevelDebug  = "DEBUG"
-	LogLevelInfo   = "INFO"
-	LogLevelWarn   = "WARN"
-	LogLevelError  = "ERROR"
+	LogLevelDebug = "DEBUG"
+	LogLevelInfo  = "INFO"
+	LogLevelWarn  = "WARN"
+	LogLevelError = "ERROR"
 )
 
 // Config the plugin configuration.

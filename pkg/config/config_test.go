@@ -58,6 +58,7 @@ func TestConfigBadBotAction(t *testing.T) {
 		t.Error("ValidateConfig didn't fail an invalid BotAction.")
 	}
 }
+
 // TestConfigBadBotProxyURL overrides a default config with an invalid BotProxyURL and checks that an error is raised by ValidateConfig().
 func TestConfigBadBotProxyURL(t *testing.T) {
 	c := New()

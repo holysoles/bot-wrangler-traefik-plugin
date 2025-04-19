@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"testing"
-	"fmt"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
@@ -302,12 +302,12 @@ func TestWranglerBlockAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && 
+	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" &&
 		blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities."
 	if !want {
 		t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' did not match expected response", action, BotUserAgent)
 	}
-	wantLog := regexp.MustCompile(`.* level=INFO msg="ServeHTTP: User agent '`+ua+`' considered AI Robot." pluginName=bot-wrangler-traefik-plugin userAgent="?`+ua+
+	wantLog := regexp.MustCompile(`.* level=INFO msg="ServeHTTP: User agent '` + ua + `' considered AI Robot." pluginName=bot-wrangler-traefik-plugin userAgent="?` + ua +
 		`"? sourceIP="?.*"? requestedPath="?.*"? remediationAction=BLOCK operator="?.+"? respectsRobotsTxt="?.+"? function="?.+"? description="?.+"?` + "\n")
 	got := testLogOut.String()
 	if !wantLog.MatchString(got) {
