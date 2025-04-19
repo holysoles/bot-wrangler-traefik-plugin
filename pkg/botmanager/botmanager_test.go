@@ -1,9 +1,9 @@
 package botmanager
 
 import (
+	"bytes"
 	"testing"
 	"time"
-	"bytes"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"

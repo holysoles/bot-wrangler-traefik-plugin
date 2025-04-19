@@ -1,11 +1,11 @@
 package proxy
 
 import (
-	"fmt"
 	"context"
-	"testing"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"testing"
 )
 
 // TestBotProxyNew tests the default initialization behavior of proxy.New()
@@ -43,16 +43,16 @@ func TestBotProxyServe(t *testing.T) {
 
 // TestBotProxyNoBuffering tests that the ReverseProxy is not buffering the backend server's response
 func TestReverseProxyNoBuffering(t *testing.T) {
-    backendServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-        // Send a large response body w appropriate headers
+	backendServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// Send a large response body w appropriate headers
 		w.Header().Set("Content-Length", "1024")
 		_, err := w.Write(make([]byte, 1024))
 		if err != nil {
 			t.Errorf("Failed to write response: %v", err)
 			return
 		}
-    }))
-    defer backendServer.Close()
+	}))
+	defer backendServer.Close()
 
 	p := New(backendServer.URL)
 	ctx := context.Background()

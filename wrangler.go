@@ -12,8 +12,8 @@ import (
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/botmanager"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
-	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/proxy"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/proxy"
 )
 
 // Wrangler used to manage a instance of the plugin.

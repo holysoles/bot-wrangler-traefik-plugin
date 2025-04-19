@@ -66,6 +66,13 @@ jobs:
           go mod vendor
           # git diff --exit-code ./vendor/
 
+      - name: gofmt
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            gofmt -s -d .
+            exit 1
+          fi
+
       - name: Lint and Tests
         run: make
 
