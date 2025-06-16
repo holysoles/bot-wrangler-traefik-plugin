@@ -42,7 +42,7 @@ LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-rob
 
 Please read if you plan to deploy this plugin!
 
-- Ensure that the `robots.txt` template is available to Traefik at startup. For Docker, this means passing the file in as a mount. For Kubernetes, mounting a the template in a ConfigMap is easiest.
+- If providing a custom robots.txt template with `robotsTxtFilePath`, ensure that the `robots.txt` template is available to Traefik at startup. For Docker, this means passing the file in as a mount. For Kubernetes, mounting the template in a ConfigMap is easiest.
 - The reverse proxy to the `botProxyUrl` is unbuffered. If you are passing this request to _another_ reverse proxy in front of a tarpit-style application, ensure proxy buffering is disabled.
 - The cache from ai-robots-txt is refreshed if expired during a request. While this is set (by default) to update every 24 hours, there will be a small response speed impact (<0.06s) on the request that causes the cache refresh.
 
@@ -59,7 +59,7 @@ The follow parameters are exposed to configure this plugin
 |botBlockHttpCode|`403`|The HTTP response code that should be returned when a `BLOCK` action is taken|
 |botBlockHttpContent|`"Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"`|The value of the 'message' key in the JSON response when a `BLOCK` action is taken. If an empty string, the response body has no content.|
 |logLevel|`INFO`|The log level for the plugin|
-|robotsTxtFilePath|`robots.txt`| The file path to the robots.txt template file. You can customize the provided file as desired|
+|robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. See `robots.txt` in the repo for an example|
 |robotsSourceUrl|`https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json`|A URL to a JSON formatted robot user agent index. You can provide your own, but ensure it has the same JSON keys!|
 
 ### "Tarpits" to Send Bots to
@@ -145,9 +145,9 @@ volumes:
     type: configMap
 ```
 
-2. Create configMap for robots.txt template
+2. (Optional) Create configMap for robots.txt template
 
-We'll need to create the configMap being referenced (ensure its in the same namespace!):
+If you want to use a custom `robots.txt` file template for the plugin to render, we'll need to create the configMap being referenced (ensure its in the same namespace!):
 
 ```yaml
 ---

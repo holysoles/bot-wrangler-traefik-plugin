@@ -23,6 +23,16 @@ const (
 	LogLevelError = "ERROR"
 )
 
+// default robots.txt template that will be rendered.
+const (
+	RobotsTxtDefault = `
+{{ range $agent := .UserAgentList }}
+User-agent: {{ $agent }}
+{{- end }}
+Disallow: /
+`
+)
+
 // Config the plugin configuration.
 type Config struct {
 	Enabled              string `json:"enabled,omitempty"`
@@ -46,7 +56,7 @@ func New() *Config {
 		BotProxyURL:          "",
 		CacheUpdateInterval:  "24h",
 		LogLevel:             "INFO",
-		RobotsTXTFilePath:    "robots.txt",
+		RobotsTXTFilePath:    "",
 		RobotsSourceURL:      "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
 	}
 }
