@@ -37,42 +37,49 @@ func CreateConfig() *config.Config {
 }
 
 // New creates a new plugin instance.
-func New(_ context.Context, next http.Handler, config *config.Config, name string) (http.Handler, error) {
-	log := logger.New(config.LogLevel)
-	config.BotAction = strings.ToUpper(config.BotAction)
+func New(_ context.Context, next http.Handler, c *config.Config, name string) (http.Handler, error) {
+	log := logger.New(c.LogLevel)
+	c.BotAction = strings.ToUpper(c.BotAction)
 
-	err := config.ValidateConfig()
+	err := c.ValidateConfig()
 	if err != nil {
 		log.Error("New: unable to load configuration properly. " + err.Error())
 		return nil, err
 	}
-	loadedTemplate, err := template.ParseFiles(config.RobotsTXTFilePath)
+	t := template.New("tmp")
+	var loadedT *template.Template
+	if c.RobotsTXTFilePath == "" {
+		loadedT, err = t.Parse(config.RobotsTxtDefault)
+	} else {
+		log.Info("New: Custom robots.txt template file '" + c.RobotsTXTFilePath + "' specified, parsing..")
+		loadedT, err = t.ParseFiles(c.RobotsTXTFilePath)
+	}
 	if err != nil {
 		log.Error("New: Unable to load robots.txt template. " + err.Error())
 		return nil, err
 	}
-	uAMan, err := botmanager.New(config.RobotsSourceURL, config.CacheUpdateInterval, log)
+	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
 	if err != nil {
 		log.Error("New: Unable to initialize bot user agent list manager. " + err.Error())
 		return nil, err
 	}
 	var bP *proxy.BotProxy
-	if config.BotProxyURL != "" {
-		bP = proxy.New(config.BotProxyURL)
+	if c.BotProxyURL != "" {
+		bP = proxy.New(c.BotProxyURL)
 	}
 
-	enable, _ := strconv.ParseBool(config.Enabled)
+	enable, _ := strconv.ParseBool(c.Enabled)
 	return &Wrangler{
 		next: next,
 		name: name,
 
 		enabled:              enable,
-		botAction:            config.BotAction,
+		botAction:            c.BotAction,
 		botUAManager:         uAMan,
-		botBlockHTTPCode:     config.BotBlockHTTPCode,
-		botBlockHTTPResponse: config.BotBlockHTTPResponse,
+		botBlockHTTPCode:     c.BotBlockHTTPCode,
+		botBlockHTTPResponse: c.BotBlockHTTPResponse,
 		log:                  log,
-		template:             loadedTemplate,
+		template:             loadedT,
 		proxy:                bP,
 	}, nil
 }
