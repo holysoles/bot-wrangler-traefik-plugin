@@ -303,7 +303,7 @@ func TestWranglerBlockAction(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" &&
-		blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities."
+		blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"
 	if !want {
 		t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' did not match expected response", action, BotUserAgent)
 	}
@@ -397,7 +397,7 @@ func TestWranglerProxyActionNoInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities."
+	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"
 	if !want {
 		t.Errorf("request from bot that should've been proxied and failed did not return a blocked fallback response")
 	}

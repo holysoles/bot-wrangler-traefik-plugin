@@ -59,6 +59,16 @@ func TestConfigBadBotAction(t *testing.T) {
 	}
 }
 
+// TestConfigBadBotBlockHTTPCode overrides a default config with an invalid BotBlockHTTPCode and checks that an error is raised by ValidateConfig().
+func TestConfigBadBotBlockHTTPCode(t *testing.T) {
+	c := New()
+	c.BotBlockHTTPCode = 999
+	err := c.ValidateConfig()
+	if err == nil {
+		t.Error("ValidateConfig didn't fail an invalid BotBlockHTTPCode.")
+	}
+}
+
 // TestConfigBadBotProxyURL overrides a default config with an invalid BotProxyURL and checks that an error is raised by ValidateConfig().
 func TestConfigBadBotProxyURL(t *testing.T) {
 	c := New()

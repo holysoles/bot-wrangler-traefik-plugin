@@ -21,12 +21,14 @@ type Wrangler struct {
 	next http.Handler
 	name string
 
-	enabled      bool
-	botAction    string
-	botUAManager *botmanager.BotUAManager
-	log          *logger.Log
-	template     *template.Template
-	proxy        *proxy.BotProxy
+	enabled              bool
+	botAction            string
+	botBlockHTTPCode     int
+	botBlockHTTPResponse string
+	botUAManager         *botmanager.BotUAManager
+	log                  *logger.Log
+	template             *template.Template
+	proxy                *proxy.BotProxy
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -64,12 +66,14 @@ func New(_ context.Context, next http.Handler, config *config.Config, name strin
 		next: next,
 		name: name,
 
-		enabled:      enable,
-		botAction:    config.BotAction,
-		botUAManager: uAMan,
-		log:          log,
-		template:     loadedTemplate,
-		proxy:        bP,
+		enabled:              enable,
+		botAction:            config.BotAction,
+		botUAManager:         uAMan,
+		botBlockHTTPCode:     config.BotBlockHTTPCode,
+		botBlockHTTPResponse: config.BotBlockHTTPResponse,
+		log:                  log,
+		template:             loadedTemplate,
+		proxy:                bP,
 	}, nil
 }
 
@@ -157,15 +161,18 @@ func (w *Wrangler) handleOutcomePass(rw http.ResponseWriter, req *http.Request) 
 // handleOutcomeBlock processes tasks if the bot request should be blocked.
 func (w *Wrangler) handleOutcomeBlock(rw http.ResponseWriter, _ *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusForbidden)
-	response := map[string]string{
-		"error":   "Forbidden",
-		"message": "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource due to scraping activities.",
-	}
-	err := json.NewEncoder(rw).Encode(response)
-	if err != nil {
-		w.log.Error("ServeHTTP: Error when rendering JSON for block response. Sending no content in reply. Error: " + err.Error())
-		return
+	rw.WriteHeader(w.botBlockHTTPCode)
+	if w.botBlockHTTPResponse != "" {
+		statusText := http.StatusText(w.botBlockHTTPCode)
+		response := map[string]string{
+			"error":   statusText,
+			"message": w.botBlockHTTPResponse,
+		}
+		err := json.NewEncoder(rw).Encode(response)
+		if err != nil {
+			w.log.Error("ServeHTTP: Error when rendering JSON for block response. Sending no content in reply. Error: " + err.Error())
+			return
+		}
 	}
 }
 

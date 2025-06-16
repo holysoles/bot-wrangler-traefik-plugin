@@ -30,7 +30,8 @@ services:
 
       - "traefik.http.routers.router-bar.middlewares=bot-wrangler"
       - "traefik.http.services.service-bar.loadbalancer.server.port=80"
-      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botaction=PROXY"
+      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botaction=BLOCK"
+      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botBlockHttpCode=403"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.loglevel=DEBUG"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.cacheUpdateInterval=1m"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botProxyUrl=http://backend:80"
