@@ -10,7 +10,7 @@ LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-rob
 
 - `PASS`: Do nothing (no-op)
 - `LOG`: write a log message about the visitor, the default behavior
-- `BLOCK`: reject the request with a 403 error
+- `BLOCK`: reject the request with a static response (a 403 error by default)
 - `PROXY`: proxy the request to a "tarpit" or other service to handle bot traffic, such as [Nepenthes](https://zadzmo.org/code/nepenthes/), [iocaine](https://iocaine.madhouse-project.org), etc
 
 ## Table Of Contents
@@ -54,9 +54,11 @@ The follow parameters are exposed to configure this plugin
 |------|---------------|-------------|
 |enabled|`true`|Whether or not the plugin should be enabled|
 |cacheUpdateInterval|`24h`|How frequently the robots list should be updated|
-|botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return 403), `PROXY` (log and proxy to `botProxyUrl`)|
+|botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return static error response), `PROXY` (log and proxy to `botProxyUrl`)|
 |botProxyUrl|`""`|The URL to pass a bot's request to, if `PROXY` is the set `botAction`|
-|logLevel|`INFO`|THe log level for the plugin|
+|botBlockHttpCode|`403`|The HTTP response code that should be returned when a `BLOCK` action is taken|
+|botBlockHttpContent|`"Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"`|The value of the 'message' key in the JSON response when a `BLOCK` action is taken. If an empty string, the response body has no content.|
+|logLevel|`INFO`|The log level for the plugin|
 |robotsTxtFilePath|`robots.txt`| The file path to the robots.txt template file. You can customize the provided file as desired|
 |robotsSourceUrl|`https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json`|A URL to a JSON formatted robot user agent index. You can provide your own, but ensure it has the same JSON keys!|
 

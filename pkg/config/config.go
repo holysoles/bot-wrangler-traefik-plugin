@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
@@ -24,25 +25,29 @@ const (
 
 // Config the plugin configuration.
 type Config struct {
-	Enabled             string `json:"enabled,omitempty"`
-	BotAction           string `json:"botAction,omitempty"`
-	BotProxyURL         string `json:"botProxyUrl,omitempty"`
-	CacheUpdateInterval string `json:"cacheUpdateInterval,omitempty"`
-	LogLevel            string `json:"logLevel,omitempty"`
-	RobotsTXTFilePath   string `json:"robotsTxtFilePath,omitempty"`
-	RobotsSourceURL     string `json:"robotsSourceUrl,omitempty"`
+	Enabled              string `json:"enabled,omitempty"`
+	BotAction            string `json:"botAction,omitempty"`
+	BotBlockHTTPCode     int    `json:"botBlockHttpCode,omitempty"`
+	BotBlockHTTPResponse string `json:"botBlockHttpResponse,omitempty"`
+	BotProxyURL          string `json:"botProxyUrl,omitempty"`
+	CacheUpdateInterval  string `json:"cacheUpdateInterval,omitempty"`
+	LogLevel             string `json:"logLevel,omitempty"`
+	RobotsTXTFilePath    string `json:"robotsTxtFilePath,omitempty"`
+	RobotsSourceURL      string `json:"robotsSourceUrl,omitempty"`
 }
 
 // New creates the default plugin configuration.
 func New() *Config {
 	return &Config{
-		Enabled:             "true",
-		BotAction:           "LOG",
-		BotProxyURL:         "",
-		CacheUpdateInterval: "24h",
-		LogLevel:            "INFO",
-		RobotsTXTFilePath:   "robots.txt",
-		RobotsSourceURL:     "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
+		Enabled:              "true",
+		BotAction:            "LOG",
+		BotBlockHTTPCode:     http.StatusForbidden,
+		BotBlockHTTPResponse: "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource",
+		BotProxyURL:          "",
+		CacheUpdateInterval:  "24h",
+		LogLevel:             "INFO",
+		RobotsTXTFilePath:    "robots.txt",
+		RobotsSourceURL:      "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
 	}
 }
 
@@ -61,6 +66,12 @@ func (c *Config) ValidateConfig() error {
 	if !slices.Contains([]string{BotActionPass, BotActionLog, BotActionBlock, BotActionProxy}, c.BotAction) {
 		return fmt.Errorf("ValidateConfig: BotAction must be one of '%s', '%s', '%s', '%s'. Got '%s'", BotActionPass, BotActionLog, BotActionBlock, BotActionProxy, c.BotAction)
 	}
+	// BotBlockHttpCode
+	if http.StatusText(c.BotBlockHTTPCode) == "" {
+		return fmt.Errorf("ValidateConfig: BotBlockHTTPCode must be a valid HTTP response code. Got '%d'", c.BotBlockHTTPCode)
+	}
+	// BotBlockHttpResponse
+	// no validation. We'll allow any string to be specified here.
 	// BotProxyURL
 	if c.BotProxyURL != "" {
 		_, err = url.ParseRequestURI(c.BotProxyURL)
