@@ -33,6 +33,14 @@ Disallow: /
 `
 )
 
+// robots.txt template that will disallow all user-agents.
+const (
+	RobotsTxtDisallowAll = `
+User-agent: *
+Disallow: /
+`
+)
+
 // Config the plugin configuration.
 type Config struct {
 	Enabled              string `json:"enabled,omitempty"`
@@ -43,6 +51,7 @@ type Config struct {
 	CacheUpdateInterval  string `json:"cacheUpdateInterval,omitempty"`
 	LogLevel             string `json:"logLevel,omitempty"`
 	RobotsTXTFilePath    string `json:"robotsTxtFilePath,omitempty"`
+	RobotsTXTDisallowAll bool   `json:"robotsTxtDisallowAll,omitempty"`
 	RobotsSourceURL      string `json:"robotsSourceUrl,omitempty"`
 }
 
@@ -57,6 +66,7 @@ func New() *Config {
 		CacheUpdateInterval:  "24h",
 		LogLevel:             "INFO",
 		RobotsTXTFilePath:    "",
+		RobotsTXTDisallowAll: false,
 		RobotsSourceURL:      "https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json",
 	}
 }

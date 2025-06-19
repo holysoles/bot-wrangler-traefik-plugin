@@ -17,8 +17,10 @@ import (
 )
 
 // most common user agent as of 3/31/2025 from https://microlink.io/user-agents
-const RealUserAgent string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-const BotUserAgent string = "GPTBot"
+const (
+	RealUserAgent string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+	BotUserAgent  string = "GPTBot"
+)
 
 // We need to suppress logging, and in some cases validate that logs were written
 // init sets up the testing environment and helpers
@@ -186,7 +188,7 @@ func TestWranglerInitBadRobotsIndex(t *testing.T) {
 }
 
 // getWranglerResponse is a helper function to setup a context, plugin, responsewriter, etc to generate a response. UserAgent, Botaction, and request URL can be specified
-func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable bool) *http.Response {
+func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable bool, disallowAll bool) *http.Response {
 	t.Helper()
 	if url == "" {
 		url = "http://localhost"
@@ -197,6 +199,9 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 	}
 	if disable {
 		cfg.Enabled = "false"
+	}
+	if disallowAll {
+		cfg.RobotsTXTDisallowAll = true
 	}
 
 	ctx := context.Background()
@@ -228,7 +233,7 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 
 // TestWranglerDisabled tests that the plugin simply returns and exits early
 func TestWranglerDisabled(t *testing.T) {
-	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", false)
+	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", false, false)
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("robots.txt page returned non-200 unexpectedly. Got: %d", res.StatusCode)
 	}
@@ -242,9 +247,23 @@ func TestWranglerDisabled(t *testing.T) {
 
 // TestWranglerRobotsTxt tests that the plugin renders a valid robots.txt exclusions file when requested
 func TestWranglerRobotsTxt(t *testing.T) {
-	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", true)
+	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", true, false)
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("disabled plugin request returned non-200 unexpectedly. Got: %d", res.StatusCode)
+	}
+}
+
+// TestWranglerRobotsTxtDisallowAll tests that the plugin renders a robots.txt with all user-agents disallowed when the config flag is specified
+func TestWranglerRobotsTxtDisallowAll(t *testing.T) {
+	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", false, true)
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("robots.txt page returned non-200 unexpectedly. Got: %d", res.StatusCode)
+	}
+	resBodyB, _ := io.ReadAll(res.Body)
+	resBody := string(resBodyB)
+	want := regexp.MustCompile("User-agent: \\*\nDisallow: \\/")
+	if !want.MatchString(resBody) {
+		t.Errorf("robots.txt did not contain a wildcard for disallowed user-agents. Got: %s", resBody)
 	}
 }
 
@@ -278,7 +297,7 @@ func TestWranglerPassActions(t *testing.T) {
 	}
 
 	for _, s := range passScenarios {
-		res := getWranglerResponse(t, s.userAgent, s.botAction, "", false)
+		res := getWranglerResponse(t, s.userAgent, s.botAction, "", false, false)
 		resBody, _ := io.ReadAll(res.Body)
 		resUnmodified := res.StatusCode == http.StatusOK && len(res.Header) == 0 && len(resBody) == 0
 		if !resUnmodified {
@@ -296,7 +315,7 @@ func TestWranglerBlockAction(t *testing.T) {
 	var blockedBody jsonBody
 	ua := BotUserAgent
 	action := config.BotActionBlock
-	res := getWranglerResponse(t, ua, action, "", false)
+	res := getWranglerResponse(t, ua, action, "", false, false)
 	resBody, _ := io.ReadAll(res.Body)
 	err := json.Unmarshal(resBody, &blockedBody)
 	if err != nil {

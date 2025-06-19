@@ -46,11 +46,16 @@ func New(_ context.Context, next http.Handler, c *config.Config, name string) (h
 		log.Error("New: unable to load configuration properly. " + err.Error())
 		return nil, err
 	}
+
 	t := template.New("tmp")
 	var loadedT *template.Template
-	if c.RobotsTXTFilePath == "" {
+	switch {
+	case c.RobotsTXTDisallowAll:
+		log.Info("New: robotsTxtDisallowAll specified, robots.txt will disallow all user-agents")
+		loadedT, err = t.Parse(config.RobotsTxtDisallowAll)
+	case c.RobotsTXTFilePath == "":
 		loadedT, err = t.Parse(config.RobotsTxtDefault)
-	} else {
+	default:
 		log.Info("New: Custom robots.txt template file '" + c.RobotsTXTFilePath + "' specified, parsing..")
 		loadedT, err = t.ParseFiles(c.RobotsTXTFilePath)
 	}
@@ -58,6 +63,7 @@ func New(_ context.Context, next http.Handler, c *config.Config, name string) (h
 		log.Error("New: Unable to load robots.txt template. " + err.Error())
 		return nil, err
 	}
+
 	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
 	if err != nil {
 		log.Error("New: Unable to initialize bot user agent list manager. " + err.Error())
