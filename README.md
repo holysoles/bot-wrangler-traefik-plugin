@@ -59,7 +59,8 @@ The follow parameters are exposed to configure this plugin
 |botBlockHttpCode|`403`|The HTTP response code that should be returned when a `BLOCK` action is taken|
 |botBlockHttpContent|`"Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"`|The value of the 'message' key in the JSON response when a `BLOCK` action is taken. If an empty string, the response body has no content.|
 |logLevel|`INFO`|The log level for the plugin|
-|robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. See `robots.txt` in the repo for an example|
+|robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. If one is not provided, a default will be generated based on the user agents from your `robotsSourceUrl`. See the `robots.txt` in the repo|
+|robotsTxtDisallowAll|`false`|A config option to generate a robots.txt file that will disallow all user-agents. This does not change the blocking behavior of the middleware.|
 |robotsSourceUrl|`https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json`|A URL to a JSON formatted robot user agent index. You can provide your own, but ensure it has the same JSON keys!|
 
 ### "Tarpits" to Send Bots to
