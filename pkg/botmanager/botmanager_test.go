@@ -97,7 +97,7 @@ func TestBotIndexBadUpdate(t *testing.T) {
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
 	_, _ = b.GetBotIndex()
 	firstUpdate := b.lastUpdate
-	b.url = "https://httpbin.org/json"
+	b.urls = []string{"https://httpbin.org/json"}
 	time.Sleep(b.cacheUpdateInterval)
 	_, err := b.GetBotIndex()
 	if b.lastUpdate != firstUpdate {
