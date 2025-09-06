@@ -1,0 +1,3 @@
+package parser
+
+func TestParser() {}

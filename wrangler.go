@@ -13,6 +13,7 @@ import (
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/botmanager"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/proxy"
 )
 
@@ -127,9 +128,10 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if w.botAction != config.BotActionPass {
 		uALogMsg := fmt.Sprintf("ServeHTTP: User agent '%s' considered AI Robot.", uA)
+		uAMetadata := uAInfo.JSONMetadata
 		w.log.Info(uALogMsg, "userAgent", uA, "sourceIP", req.RemoteAddr, "requestedPath",
-			rPath, "remediationAction", w.botAction, "operator", *uAInfo.Operator, "respectsRobotsTxt",
-			*uAInfo.Respect, "function", *uAInfo.Function, "description", *uAInfo.Description,
+			rPath, "remediationAction", w.botAction, "operator", uAMetadata.Operator, "respectsRobotsTxt",
+			uAMetadata.Respect, "function", uAMetadata.Function, "description", uAMetadata.Description,
 		)
 	}
 	// handle outcome of the request for the bot.
@@ -137,7 +139,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 }
 
 // renderRobotsTxt renders and writes the current Robots Exclusion list into the request's response.
-func (w *Wrangler) renderRobotsTxt(bIndex botmanager.BotUserAgentIndex, rw http.ResponseWriter) {
+func (w *Wrangler) renderRobotsTxt(bIndex parser.RobotsIndex, rw http.ResponseWriter) {
 	uAList := make([]string, len(bIndex))
 	i := 0
 	for k := range bIndex {

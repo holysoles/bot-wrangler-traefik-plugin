@@ -61,7 +61,13 @@ The follow parameters are exposed to configure this plugin
 |logLevel|`INFO`|The log level for the plugin|
 |robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. If one is not provided, a default will be generated based on the user agents from your `robotsSourceUrl`. See the `robots.txt` in the repo|
 |robotsTxtDisallowAll|`false`|A config option to generate a robots.txt file that will disallow all user-agents. This does not change the blocking behavior of the middleware.|
-|robotsSourceUrl|`https://raw.githubusercontent.com/ai-robots-txt/ai.robots.txt/refs/heads/main/robots.json`|A URL to a JSON formatted robot user agent index. You can provide your own, but ensure it has the same JSON keys!|
+|robotsSourceUrl|`https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json`|A comma separated list of URLs to retrieve a bot list. You can provide your own, but read the notes below!|
+
+### Providing Custom Robots Sources
+
+Presently, two different types of source files are supported. The first is classic `robots.txt` styled formatting, from which a bots list will be extracted. The second is a rich JSON object, following the schema of the ai.robots.txt project's JSON file found [here](https://github.com/ai-robots-txt/ai.robots.txt/blob/main/robots.json). This JSON format allows for additional metadata to be provided in logs which can be used for deeper analysis from administrators.
+
+In either case, you should ensure that the server serving your source file provides a proper `Content-Type` header. Of particular note, using content from `raw.githubusercontent.com` **fails to do this**. If you wish to use a file hosted on GitHub, check out [jsdelivr](https://github.com/jsdelivr/jsdelivr?tab=readme-ov-file#github) which can proxy the file with the proper headers.
 
 ### "Tarpits" to Send Bots to
 
