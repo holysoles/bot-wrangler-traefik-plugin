@@ -20,6 +20,8 @@ linters:
     - paralleltest
     - nlreturn
     - wsl
+    - wsl_v5
+    - nolintlint
     - exhaustive
     - exhaustruct
     - err113
