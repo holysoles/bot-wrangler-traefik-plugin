@@ -35,7 +35,7 @@ func New(s string, i string, l *logger.Log) (*BotUAManager, error) {
 	return &uAMan, err
 }
 
-// GetBotIndex is an exported function to retrieve the current, merge robots.txt index. It will refreshed the cached copy if necessary.
+// GetBotIndex is an exported function to retrieve the current, merged robots.txt index. It will refreshed the cached copy if necessary.
 func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 	var err error
 
@@ -54,14 +54,10 @@ func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 
 // update fetches the latest robots.txt index from each configured source, merges them, stores it, and updates the timestamp.
 func (b *BotUAManager) update() error {
-	for _, u := range b.urls {
-		i, err := parser.RobotsSourceUpdate(u)
-		if err != nil {
-			return err
-		}
-		for k, v := range i {
-			b.botIndex[k] = v
-		}
+	var err error
+	b.botIndex, err = parser.GetIndexFromSources(b.urls)
+	if err != nil {
+		return err
 	}
 	b.lastUpdate = time.Now()
 	return nil

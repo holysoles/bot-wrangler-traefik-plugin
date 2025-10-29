@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	regexUserAgent    = "(?i:user-agent:\\s)(.*)"
-	regexAllowRule    = "(?i:allow:\\s)(.*)"
-	regexDisallowRule = "(?i:disallow:\\s)(.*)"
+	regexUserAgent    = `(?i:^user-agent\s?:\s?)(.*)`
+	regexAllowRule    = `(?i:^allow\s?:\s?)(.*)`
+	regexDisallowRule = `(?i:^disallow\s?:\s?)(.*)`
 )
 
 // BotMetadata holds metadata about a bot's user agent. Populated from a JSON source.
@@ -60,35 +60,30 @@ func getSourceContent(u string) (*http.Response, error) {
 	return http.DefaultClient.Do(req)
 }
 
-func getSourceContentType(r *http.Response) (*bufio.Reader, string, error) {
+func getSourceContentType(r *http.Response) (*bufio.Reader, string) {
 	cT := "txt"
 	bR := bufio.NewReader(r.Body)
 
-	firstC, err := bR.Peek(1)
-	if err != nil {
-		return bR, cT, err
-	}
 	sniff := r.Header.Get("X-Content-Type-Options") != "nosniff"
-
 	u := r.Request.URL.String()
-	if r.Header.Get("Content-Type") == mime.TypeByExtension(".json") || strings.HasSuffix(u, ".json") || (sniff && string(firstC) == "{") {
+	if r.Header.Get("Content-Type") == mime.TypeByExtension(".json") || strings.HasSuffix(u, ".json") {
 		cT = "json"
+	} else if sniff {
+		firstC, err := bR.Peek(1)
+		if err == nil {
+			if string(firstC) == "{" {
+				cT = "json"
+			}
+		}
 	}
-	return bR, cT, err
+
+	return bR, cT
 }
 
-// RobotsSourceUpdate manages retrieving robots source from a URL, and parses it accordingly to a RobotsIndex.
-func RobotsSourceUpdate(u string) (RobotsIndex, error) {
+func getIndexFromContent(r *http.Response) (RobotsIndex, error) {
 	var rIndex RobotsIndex
-	r, err := getSourceContent(u)
-	if err != nil {
-		return rIndex, err
-	}
-	defer func() { err = r.Body.Close() }()
-	bR, cT, err := getSourceContentType(r)
-	if err != nil {
-		return rIndex, err
-	}
+	var err error
+	bR, cT := getSourceContentType(r)
 
 	switch cT {
 	case "json":
@@ -100,46 +95,74 @@ func RobotsSourceUpdate(u string) (RobotsIndex, error) {
 	return rIndex, err
 }
 
+// GetIndexFromSources manages retrieving robots source from slice of URLs, and parses it accordingly to a merged RobotsIndex.
+func GetIndexFromSources(s []string) (RobotsIndex, error) {
+	i := make(RobotsIndex)
+	for _, u := range s {
+		r, err := getSourceContent(u)
+		if err != nil {
+			return i, err
+		}
+		defer func() { err = r.Body.Close() }()
+		if r.StatusCode != http.StatusOK {
+			return i, fmt.Errorf("error retrieving source data from '%s'. Status: %s", u, r.Status)
+		}
+		n, err := getIndexFromContent(r)
+		if err != nil {
+			return i, err
+		}
+
+		// could use golang.org/x/exp/maps, but this saves us a dep
+		//nolint:modernize
+		for k, v := range n {
+			i[k] = v
+		}
+	}
+	return i, nil
+}
+
 func robotsTxtParse(r *bufio.Reader) RobotsIndex {
 	s := bufio.NewScanner(r)
-	var rIndex RobotsIndex
+	rIndex := make(RobotsIndex)
 
 	// rfc9309. user-agent statement(s) precede any amount of rules, before starting another entry
 	var e batchEntry
-	uaStart := false
-	rulesStart := false
+	ua := false
+	rule := false
 	for s.Scan() {
 		l := s.Text()
 		reUa := regexp.MustCompile(regexUserAgent)
 		reAllow := regexp.MustCompile(regexAllowRule)
 		reDisallow := regexp.MustCompile(regexDisallowRule)
 		switch {
-		case reUa.MatchString(l):
-			if rulesStart {
-				rulesStart = false
-				if uaStart {
-					rIndex.addTxtRule(e)
-					e = batchEntry{}
-				}
+		case (ua || rule) && reAllow.MatchString(l):
+			ua = false
+			rule = true
+			m := reAllow.FindStringSubmatch(l)
+			e.allow = append(e.allow, m[1])
+		case (ua || rule) && reDisallow.MatchString(l):
+			ua = false
+			rule = true
+			m := reDisallow.FindStringSubmatch(l)
+			e.disallow = append(e.disallow, m[1])
+		default:
+			if rule {
+				rIndex.addTxtRule(e)
+				e = batchEntry{}
 			}
-			uaStart = true
-			m := reUa.FindAllString(l, -1)
-			e.ua = append(e.ua, m[0])
-		case reAllow.MatchString(l):
-			if uaStart {
-				uaStart = false
+			uM := reUa.FindStringSubmatch(l)
+			if len(uM) > 0 {
+				ua = true
+				rule = false
+				e.ua = append(e.ua, uM[1])
+			} else {
+				ua = false
+				rule = false
 			}
-			rulesStart = true
-			m := reDisallow.FindAllString(l, -1)
-			e.allow = append(e.allow, m[0])
-		case reDisallow.MatchString(l):
-			if uaStart {
-				uaStart = false
-			}
-			rulesStart = true
-			m := reDisallow.FindAllString(l, -1)
-			e.disallow = append(e.disallow, m[0])
 		}
+	}
+	if rule {
+		rIndex.addTxtRule(e)
 	}
 
 	return rIndex
@@ -148,7 +171,7 @@ func robotsTxtParse(r *bufio.Reader) RobotsIndex {
 type jsonBotUserAgentIndex map[string]BotMetadata
 
 // Validate checks that the json bot source has all required values.
-func (m *jsonBotUserAgentIndex) Validate() error {
+func (m *jsonBotUserAgentIndex) validate() error {
 	for _, bInfo := range *m {
 		r := reflect.ValueOf(bInfo)
 		// it'd be better to range over r.NumField(), but yaegi is panicking when loading the plugin when we use that
@@ -176,7 +199,7 @@ func robotsJSONParse(r *bufio.Reader) (RobotsIndex, error) {
 	if err != nil {
 		return rIndex, err
 	}
-	err = jsonIndex.Validate()
+	err = jsonIndex.validate()
 	if err != nil {
 		return rIndex, err
 	}

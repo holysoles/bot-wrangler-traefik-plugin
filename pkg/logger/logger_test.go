@@ -14,6 +14,8 @@ var testLogOut bytes.Buffer //nolint:gochecknoglobals
 // TestNewLog tests that a logger can be initialized by the simpler New() function
 func TestNewLog(t *testing.T) {
 	log := New("DEBUG")
+	// modernize is incorrect that TypeFor should be used
+	//nolint:modernize
 	got := reflect.TypeOf(log).String()
 	if got != "*logger.Log" {
 		t.Error("Unexpected type returned from logger.New() constructor. Got: " + got)
