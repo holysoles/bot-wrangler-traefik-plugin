@@ -11,7 +11,8 @@ jobs:
 
     strategy:
       matrix:
-        go-version: [ 1.21, 1.x ]
+        # as of 10/30/2025, Yaegi only supports up to go 1.22
+        go-version: [ 1.22, 1.x ]
         os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
