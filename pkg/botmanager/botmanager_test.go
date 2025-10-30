@@ -45,7 +45,7 @@ func TestBotManagerBadURL(t *testing.T) {
 		t.Error("Unreachable RobotsSourceURL did not return an error when initializing BotUAManager")
 	}
 
-	c.RobotsSourceURL = "https://httpbin.org/json"
+	c.RobotsSourceURL = "https://httpbin.io/json"
 	_, err = New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
 	if err == nil {
 		t.Error("RobotsSourceURL that returns invalid data did not return an error when initializing BotUAManager")

@@ -24,7 +24,7 @@ const (
 
 // We need to suppress logging, and in some cases validate that logs were written
 // init sets up the testing environment and helpers
-var testLogOut bytes.Buffer //nolint:gochecknoglobals
+var testLogOut bytes.Buffer
 
 // TestWranglerInit tests that the plugin can be initialized (along with config), and can process a simple request cleanly
 func TestWranglerInit(t *testing.T) {
@@ -176,7 +176,7 @@ func TestWranglerBadBlockResponse(t *testing.T) {
 // TestWranglerInitBadRobotsIndex tests plugin behavior when an invalid robots index is supplied
 func TestWranglerInitBadRobotsIndex(t *testing.T) {
 	cfg := CreateConfig()
-	cfg.RobotsSourceURL = "https://httpbin.org/status/404"
+	cfg.RobotsSourceURL = "https://httpbin.io/status/404"
 
 	ctx := context.Background()
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})

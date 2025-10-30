@@ -8,7 +8,10 @@ lint:
 	golangci-lint run
 
 test:
-	go test -v -cover -coverprofile=coverage.txt ./...
+	go test -v -cover -coverprofile=coverage.out ./...
+
+test_codecov:
+	cat codecov.yml | curl --data-binary @- https://codecov.io/validate
 
 yaegi_test:
 	yaegi test -v .
