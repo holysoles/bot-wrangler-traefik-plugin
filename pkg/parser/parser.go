@@ -3,6 +3,7 @@ package parser
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,9 +15,15 @@ import (
 )
 
 const (
-	regexUserAgent    = `(?i:^user-agent\s?:\s?)(.*)`
-	regexAllowRule    = `(?i:^allow\s?:\s?)(.*)`
-	regexDisallowRule = `(?i:^disallow\s?:\s?)(.*)`
+	regexUserAgent    = `(?im)(?:^user-agent\s?:\s?)(.*)$`
+	regexAllowRule    = `(?im)(?:^allow\s?:\s?)(.*)$`
+	regexDisallowRule = `(?im)(?:^disallow\s?:\s?)(.*)$`
+	// https://datatracker.ietf.org/doc/html/rfc9309#name-the-user-agent-line
+	regexProductToken = `(?i)(^[a-z\_\-]$)` 
+
+	contentRobotsJson = "robots.json"
+	contentRobotsTxt  = "robots.txt"
+	contentPlaintext  = "plaintext"
 )
 
 // BotMetadata holds metadata about a bot's user agent. Populated from a JSON source.
@@ -60,36 +67,57 @@ func getSourceContent(u string) (*http.Response, error) {
 	return http.DefaultClient.Do(req)
 }
 
-func getSourceContentType(r *http.Response) (*bufio.Reader, string) {
-	cT := "txt"
+func getSourceContentType(r *http.Response) (*bufio.Reader, string, error) {
+	cT := "plaintxt"
 	bR := bufio.NewReader(r.Body)
+	var err error
 
 	sniff := r.Header.Get("X-Content-Type-Options") != "nosniff"
 	u := r.Request.URL.String()
 	if r.Header.Get("Content-Type") == mime.TypeByExtension(".json") || strings.HasSuffix(u, ".json") {
-		cT = "json"
-	} else if sniff {
-		firstC, err := bR.Peek(1)
+		cT = contentRobotsJson
+		return bR, cT, err
+	}
+	if sniff {
+		var firstC []byte
+		firstC, err = bR.Peek(1)
 		if err == nil {
 			if string(firstC) == "{" {
-				cT = "json"
+				cT = contentRobotsJson
+				return bR, cT, err
 			}
 		}
 	}
-
-	return bR, cT
+	// look for user-agent directive as hint this is robots.txt
+	buf := &bytes.Buffer{}
+	tee := io.TeeReader(bR, buf)
+	re := regexp.MustCompile(regexUserAgent)
+	var s []byte
+	s, err = io.ReadAll(tee)
+	bT := bufio.NewReader(buf)
+	if err != nil {
+		return bT, cT, err
+	}
+	if re.MatchString(string(s)) {
+		cT = contentRobotsTxt
+	}
+	return bT, cT, err
 }
 
 func getIndexFromContent(r *http.Response) (RobotsIndex, error) {
 	var rIndex RobotsIndex
-	var err error
-	bR, cT := getSourceContentType(r)
+	bR, cT, err := getSourceContentType(r)
+	if err != nil {
+		return rIndex, err
+	}
 
 	switch cT {
-	case "json":
+	case contentRobotsJson:
 		rIndex, err = robotsJSONParse(bR)
-	case "txt":
+	case contentRobotsTxt:
 		rIndex = robotsTxtParse(bR)
+	case contentPlaintext:
+		rIndex = robotsPlaintextParse(bR)
 	}
 
 	return rIndex, err
@@ -129,11 +157,11 @@ func robotsTxtParse(r *bufio.Reader) RobotsIndex {
 	var e batchEntry
 	ua := false
 	rule := false
+	reUa := regexp.MustCompile(regexUserAgent)
+	reAllow := regexp.MustCompile(regexAllowRule)
+	reDisallow := regexp.MustCompile(regexDisallowRule)
 	for s.Scan() {
 		l := s.Text()
-		reUa := regexp.MustCompile(regexUserAgent)
-		reAllow := regexp.MustCompile(regexAllowRule)
-		reDisallow := regexp.MustCompile(regexDisallowRule)
 		switch {
 		case (ua || rule) && reAllow.MatchString(l):
 			ua = false
@@ -163,6 +191,22 @@ func robotsTxtParse(r *bufio.Reader) RobotsIndex {
 	}
 	if rule {
 		rIndex.addTxtRule(e)
+	}
+
+	return rIndex
+}
+
+func robotsPlaintextParse(r *bufio.Reader) (RobotsIndex) {
+	s := bufio.NewScanner(r)
+	rIndex := make(RobotsIndex)
+	re := regexp.MustCompile(regexUserAgent)
+	for s.Scan() {
+		l := s.Text()
+		m := re.FindStringSubmatch(l)
+		if len(m) > 0 {
+			r := BotUserAgent{}
+			rIndex[m[0]] = r
+		}
 	}
 
 	return rIndex

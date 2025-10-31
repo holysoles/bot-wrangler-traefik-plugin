@@ -56,11 +56,11 @@ func newJSONServer(t *testing.T, cT string) (*httptest.Server, []byte) {
 }
 
 const (
-	sourceRobotsTxt = `
+	exampleSourceRobotsTxt = `
 user-agent: MyBot
 disallow: /
 allow: /sitemap.xml`
-	sourceRobotsTxtMulti = `user-agent: MyBot
+	exampleSourceRobotsTxtMulti = `user-agent: MyBot
 disallow: /
 allow: /sitemap.xml
 user-agent: MyBot2
@@ -71,7 +71,7 @@ allow: /sitemap.xml
 )
 
 var (
-	sourceRobotsTxtMap = map[string]BotUserAgent{
+	exampleSourceRobotsTxtMap = map[string]BotUserAgent{
 		"MyBot": {
 			AllowPath:    []string{"/sitemap.xml"},
 			DisallowPath: []string{"/"},
@@ -177,9 +177,12 @@ func TestGetSourceContentTypeJSON(t *testing.T) {
 	if err != nil {
 		t.Error("unexpected error when requesting source: " + err.Error())
 	}
-	_, cT := getSourceContentType(r)
-	if cT != "json" {
-		t.Errorf("expected content type 'json', got '%s'", cT)
+	_, cT, err := getSourceContentType(r)
+	if err != nil {
+		t.Error("unexpected error when detecting content-type of source: " + err.Error())
+	}
+	if cT != contentRobotsJson {
+		t.Errorf("expected content type '%s', got '%s'", contentRobotsJson, cT)
 	}
 }
 
@@ -192,9 +195,12 @@ func TestGetSourceContentTypeJSONSniff(t *testing.T) {
 	if err != nil {
 		t.Error("unexpected error when requesting source: " + err.Error())
 	}
-	_, cT := getSourceContentType(r)
-	if cT != "json" {
-		t.Errorf("expected content type 'json', got '%s'", cT)
+	_, cT, err := getSourceContentType(r)
+	if err != nil {
+		t.Error("unexpected error when detecting content-type of source: " + err.Error())
+	}
+	if cT != contentRobotsJson {
+		t.Errorf("expected content type '%s', got '%s'", contentRobotsJson, cT)
 	}
 }
 
@@ -218,7 +224,7 @@ func TestGetIndexFromSourcesJSONMalformed(t *testing.T) {
 // TestGetSourceContentTxt tests that the correct content type is determined for a robots.txt source
 func TestGetSourceContentTypeTxt(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, err := fmt.Fprintln(w, sourceRobotsTxt)
+		_, err := fmt.Fprintln(w, exampleSourceRobotsTxt)
 		if err != nil {
 			t.Error("unexpected error writing response body: " + err.Error())
 		}
@@ -229,16 +235,19 @@ func TestGetSourceContentTypeTxt(t *testing.T) {
 	if err != nil {
 		t.Error("unexpected error when requesting source: " + err.Error())
 	}
-	_, cT := getSourceContentType(r)
-	if cT != "txt" {
-		t.Errorf("expected content type 'txt', got '%s'", cT)
+	_, cT, err := getSourceContentType(r)
+	if err != nil {
+		t.Error("unexpected error when detecting content-type of source: " + err.Error())
+	}
+	if cT != contentRobotsTxt {
+		t.Errorf("expected content type '%s', got '%s'", contentRobotsTxt, cT)
 	}
 }
 
 // TestRobotsSourceUpdateTxt tests updating a bot index from a single txt source
 func TestRobotsSourceUpdateTxtSingle(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, err := fmt.Fprintln(w, sourceRobotsTxt)
+		_, err := fmt.Fprintln(w, exampleSourceRobotsTxt)
 		if err != nil {
 			t.Error("unexpected error writing response body: " + err.Error())
 		}
@@ -255,7 +264,7 @@ func TestRobotsSourceUpdateTxtSingle(t *testing.T) {
 		t.Errorf("expected %d bot entries, got %d", getL, rL)
 	}
 	for k, v := range r {
-		getV, ok := sourceRobotsTxtMap[k]
+		getV, ok := exampleSourceRobotsTxtMap[k]
 		if !ok {
 			t.Errorf("expected User-Agent '%s' to be retrieved", k)
 		}
@@ -273,7 +282,7 @@ func TestRobotsSourceUpdateTxtSingle(t *testing.T) {
 // TestRobotsSourceUpdateTxtMulti tests updating a bot index from a single txt source with multiple bot entries and checks its fields
 func TestRobotsSourceUpdateTxtMulti(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, err := fmt.Fprintln(w, sourceRobotsTxtMulti)
+		_, err := fmt.Fprintln(w, exampleSourceRobotsTxtMulti)
 		if err != nil {
 			t.Error("unexpected error writing response body: " + err.Error())
 		}
@@ -290,7 +299,7 @@ func TestRobotsSourceUpdateTxtMulti(t *testing.T) {
 		t.Errorf("expected %d bot entries, got %d", getL, rL)
 	}
 	for k, v := range r {
-		getV, ok := sourceRobotsTxtMap[k]
+		getV, ok := exampleSourceRobotsTxtMap[k]
 		if !ok {
 			t.Errorf("expected User-Agent '%s' to be retrieved", k)
 		}
