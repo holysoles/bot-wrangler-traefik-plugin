@@ -113,12 +113,13 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rPath := req.URL.Path
 	if rPath == "/robots.txt" {
 		w.log.Debug("ServeHTTP: /robots.txt requested, rendering with live block list", "userAgent", uA)
+		// TODO we should cache this
 		w.renderRobotsTxt(botUAIndex, rw)
 		return
 	}
 
 	// if its a normal request, see if they're on the bad robots list
-	uAInfo, uAInList := botUAIndex[uA]
+	uAInfo, uAInList := w.botUAManager.Search(uA)
 	w.log.Debug("ServeHTTP: Got a request to evaluate", "userAgent", uA)
 	if !uAInList {
 		w.log.Debug("ServeHTTP: User agent not in block list, passing traffic", "userAgent", uA)

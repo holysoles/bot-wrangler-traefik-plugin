@@ -27,7 +27,7 @@ const (
 )
 
 // BotMetadata holds metadata about a bot's user agent. Populated from a JSON source.
-type BotMetadata struct {
+type botMetadata struct {
 	Operator    *string `json:"operator"`
 	Respect     *string `json:"respect"`
 	Function    *string `json:"function"`
@@ -39,7 +39,7 @@ type BotMetadata struct {
 type BotUserAgent struct {
 	DisallowPath []string
 	AllowPath    []string
-	JSONMetadata BotMetadata
+	JSONMetadata botMetadata
 }
 
 // RobotsIndex is a hash of bot user agents and associated data with each.
@@ -231,7 +231,7 @@ func robotsPlaintextParse(r *bufio.Reader) RobotsIndex {
 	return rIndex
 }
 
-type jsonBotUserAgentIndex map[string]BotMetadata
+type jsonBotUserAgentIndex map[string]botMetadata
 
 // Validate checks that the json bot source has all required values.
 func (m *jsonBotUserAgentIndex) validate() error {

@@ -25,7 +25,7 @@ func sliceMatch(a []string, b []string) bool {
 	}
 	return true
 }
-func indexMatchSource(r RobotsIndex, s map[string]BotMetadata) bool {
+func indexMatchSource(r RobotsIndex, s map[string]botMetadata) bool {
 	for k, v := range r {
 		getV, ok := s[k]
 		if !ok {
@@ -83,18 +83,18 @@ var (
 			DisallowPath: []string{"/"},
 		},
 	}
-	sourceRobotsMetadata = BotMetadata{
+	sourceRobotsMetadata = botMetadata{
 		Operator:    getPtr("MyBot.lan"),
 		Respect:     getPtr("Yes"),
 		Function:    getPtr("golang unit tests"),
 		Frequency:   getPtr("n/a"),
 		Description: getPtr("used for this package's unit tests"),
 	}
-	sourceRobotsJSON        = map[string]BotMetadata{"MyBot": sourceRobotsMetadata}
-	sourceRobotsMetadataBad = BotMetadata{
+	sourceRobotsJSON        = map[string]botMetadata{"MyBot": sourceRobotsMetadata}
+	sourceRobotsMetadataBad = botMetadata{
 		Operator: getPtr("MyBot.lan"),
 	}
-	sourceRobotsJSONBad = map[string]BotMetadata{"MyBadBot": sourceRobotsMetadataBad}
+	sourceRobotsJSONBad = map[string]botMetadata{"MyBadBot": sourceRobotsMetadataBad}
 )
 
 func TestAddTxtRule(t *testing.T) {

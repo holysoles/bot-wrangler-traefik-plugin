@@ -9,8 +9,11 @@ import (
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 )
 
+type userAgentCache map[string]string
+
 // BotUAManager acts as a management layer around checking the current bot index, querying the index source, and refreshing the cache.
 type BotUAManager struct {
+	cache               userAgentCache
 	cacheUpdateInterval time.Duration
 	sources             []parser.Source
 	lastUpdate          time.Time
@@ -31,6 +34,7 @@ func New(s string, i string, l *logger.Log) (*BotUAManager, error) {
 
 	uAMan := BotUAManager{
 		sources:             sources,
+		cache:               make(userAgentCache),
 		cacheUpdateInterval: iDur,
 		log:                 l,
 		botIndex:            bI,
@@ -54,6 +58,22 @@ func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 	}
 
 	return b.botIndex, err
+}
+
+// TODO def
+func (b *BotUAManager) Search(u string) (parser.BotUserAgent, bool) {
+	var uAInfo parser.BotUserAgent
+	var inList bool
+	botName, isCached := b.cache[u]
+	if isCached {
+		uAInfo, inList = b.botIndex[botName]
+	} else {
+		// TODO
+		botName = u
+		uAInfo, inList = b.botIndex[botName]
+		b.cache[u] = botName
+	}
+	return uAInfo, inList
 }
 
 // update fetches the latest robots.txt index from each configured source, merges them, stores it, and updates the timestamp.
