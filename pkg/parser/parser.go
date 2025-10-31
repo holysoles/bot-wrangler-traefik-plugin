@@ -18,10 +18,10 @@ const (
 	regexUserAgent    = `(?im)(?:^user-agent\s?:\s?)(.*)$`
 	regexAllowRule    = `(?im)(?:^allow\s?:\s?)(.*)$`
 	regexDisallowRule = `(?im)(?:^disallow\s?:\s?)(.*)$`
-	// https://datatracker.ietf.org/doc/html/rfc9309#name-the-user-agent-line
-	regexProductToken = `(?i)(^[a-z\_\-]$)` 
+	// while RFC 9309 says only letters, _, and - are allowed, in the wild we see almost any non-newline characters
+	regexProductToken = `(?i)(^[^\n\r]+$)` //nolint:gosec
 
-	contentRobotsJson = "robots.json"
+	contentRobotsJSON = "robots.json"
 	contentRobotsTxt  = "robots.txt"
 	contentPlaintext  = "plaintext"
 )
@@ -41,14 +41,23 @@ type BotUserAgent struct {
 	AllowPath    []string
 	JSONMetadata BotMetadata
 }
+
+// RobotsIndex is a hash of bot user agents and associated data with each.
+type RobotsIndex map[string]BotUserAgent
+
+// batchEntry represents a logical entry from a robots.txt file.
 type batchEntry struct {
 	ua       []string
 	allow    []string
 	disallow []string
 }
 
-// RobotsIndex is a hash of bot user agents and associated data with each.
-type RobotsIndex map[string]BotUserAgent
+// Source represents a location that content will be retrieved from to populate a RobotsIndex.
+type Source struct {
+	URL         string
+	response    *http.Response
+	contentType string
+}
 
 func (r *RobotsIndex) addTxtRule(e batchEntry) {
 	for _, u := range e.ua {
@@ -56,35 +65,34 @@ func (r *RobotsIndex) addTxtRule(e batchEntry) {
 	}
 }
 
-func getSourceContent(u string) (*http.Response, error) {
-	var res *http.Response
-
-	req, err := http.NewRequest(http.MethodGet, u, nil)
+func (s *Source) getContent() (error) {
+	req, err := http.NewRequest(http.MethodGet, s.URL, nil)
 	if err != nil {
-		return res, err
+		return err
 	}
 
-	return http.DefaultClient.Do(req)
+	s.response, err = http.DefaultClient.Do(req)
+	return err
 }
 
-func getSourceContentType(r *http.Response) (*bufio.Reader, string, error) {
-	cT := "plaintxt"
-	bR := bufio.NewReader(r.Body)
+func (s *Source) getContentType() (*bufio.Reader, error) {
+	s.contentType = contentPlaintext
+	bR := bufio.NewReader(s.response.Body)
 	var err error
 
-	sniff := r.Header.Get("X-Content-Type-Options") != "nosniff"
-	u := r.Request.URL.String()
-	if r.Header.Get("Content-Type") == mime.TypeByExtension(".json") || strings.HasSuffix(u, ".json") {
-		cT = contentRobotsJson
-		return bR, cT, err
+	sniff := s.response.Header.Get("X-Content-Type-Options") != "nosniff"
+	u := s.response.Request.URL.String()
+	if s.response.Header.Get("Content-Type") == mime.TypeByExtension(".json") || strings.HasSuffix(u, ".json") {
+		s.contentType = contentRobotsJSON
+		return bR, err
 	}
 	if sniff {
 		var firstC []byte
 		firstC, err = bR.Peek(1)
 		if err == nil {
 			if string(firstC) == "{" {
-				cT = contentRobotsJson
-				return bR, cT, err
+				s.contentType = contentRobotsJSON
+				return bR, err
 			}
 		}
 	}
@@ -92,27 +100,33 @@ func getSourceContentType(r *http.Response) (*bufio.Reader, string, error) {
 	buf := &bytes.Buffer{}
 	tee := io.TeeReader(bR, buf)
 	re := regexp.MustCompile(regexUserAgent)
-	var s []byte
-	s, err = io.ReadAll(tee)
 	bT := bufio.NewReader(buf)
-	if err != nil {
-		return bT, cT, err
+	bS := bufio.NewScanner(tee)
+	for bS.Scan() {
+		if re.MatchString(bS.Text()) {
+			s.contentType = contentRobotsTxt
+			break
+		}
 	}
-	if re.MatchString(string(s)) {
-		cT = contentRobotsTxt
-	}
-	return bT, cT, err
+	return bT, err
 }
 
-func getIndexFromContent(r *http.Response) (RobotsIndex, error) {
+func (s *Source) getIndexFromContent() (RobotsIndex, error) {
 	var rIndex RobotsIndex
-	bR, cT, err := getSourceContentType(r)
-	if err != nil {
-		return rIndex, err
+	var bR *bufio.Reader
+	var err error
+
+	if s.contentType == "" {
+		bR, err = s.getContentType()
+		if err != nil {
+			return rIndex, err
+		}
+	} else {
+		bR = bufio.NewReader(s.response.Body)
 	}
 
-	switch cT {
-	case contentRobotsJson:
+	switch s.contentType {
+	case contentRobotsJSON:
 		rIndex, err = robotsJSONParse(bR)
 	case contentRobotsTxt:
 		rIndex = robotsTxtParse(bR)
@@ -123,23 +137,29 @@ func getIndexFromContent(r *http.Response) (RobotsIndex, error) {
 	return rIndex, err
 }
 
-// GetIndexFromSources manages retrieving robots source from slice of URLs, and parses it accordingly to a merged RobotsIndex.
-func GetIndexFromSources(s []string) (RobotsIndex, error) {
+func (s *Source) getIndex() (RobotsIndex, error) {
 	i := make(RobotsIndex)
-	for _, u := range s {
-		r, err := getSourceContent(u)
-		if err != nil {
-			return i, err
-		}
-		defer func() { err = r.Body.Close() }()
-		if r.StatusCode != http.StatusOK {
-			return i, fmt.Errorf("error retrieving source data from '%s'. Status: %s", u, r.Status)
-		}
-		n, err := getIndexFromContent(r)
-		if err != nil {
-			return i, err
-		}
+	err := s.getContent()
+	if err != nil {
+		return i, err
+	}
+	defer func() { err = s.response.Body.Close() }()
+	if s.response.StatusCode != http.StatusOK {
+		return i, fmt.Errorf("error retrieving source data from '%s'. Status: %s", s.URL, s.response.Status)
+	}
+	i, err = s.getIndexFromContent()
+	return i, err
+}
 
+// GetIndexFromSources manages retrieving robots source from slice of URLs, and parses it accordingly to a merged RobotsIndex.
+// TODO move this into botmanager..
+func GetIndexFromSources(l []Source) (RobotsIndex, error) {
+	i := make(RobotsIndex)
+	for _, s := range l {
+		n, err := s.getIndex()
+		if err != nil {
+			return i, err
+		}
 		// could use golang.org/x/exp/maps, but this saves us a dep
 		//nolint:modernize
 		for k, v := range n {
@@ -199,7 +219,7 @@ func robotsTxtParse(r *bufio.Reader) RobotsIndex {
 func robotsPlaintextParse(r *bufio.Reader) (RobotsIndex) {
 	s := bufio.NewScanner(r)
 	rIndex := make(RobotsIndex)
-	re := regexp.MustCompile(regexUserAgent)
+	re := regexp.MustCompile(regexProductToken)
 	for s.Scan() {
 		l := s.Text()
 		m := re.FindStringSubmatch(l)
@@ -208,7 +228,6 @@ func robotsPlaintextParse(r *bufio.Reader) (RobotsIndex) {
 			rIndex[m[0]] = r
 		}
 	}
-
 	return rIndex
 }
 

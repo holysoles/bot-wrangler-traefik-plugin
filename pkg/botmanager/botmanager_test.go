@@ -7,6 +7,7 @@ import (
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 )
 
 var testLogOut bytes.Buffer //nolint:gochecknoglobals
@@ -97,7 +98,7 @@ func TestBotIndexBadUpdate(t *testing.T) {
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
 	_, _ = b.GetBotIndex()
 	firstUpdate := b.lastUpdate
-	b.urls = []string{"https://httpbin.org/json"}
+	b.sources = []parser.Source{{URL: "https://httpbin.org/json"}}
 	time.Sleep(b.cacheUpdateInterval)
 	_, err := b.GetBotIndex()
 	if b.lastUpdate != firstUpdate {

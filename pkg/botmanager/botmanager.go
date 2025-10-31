@@ -12,7 +12,7 @@ import (
 // BotUAManager acts as a management layer around checking the current bot index, querying the index source, and refreshing the cache.
 type BotUAManager struct {
 	cacheUpdateInterval time.Duration
-	urls                []string
+	sources             []parser.Source
 	lastUpdate          time.Time
 	botIndex            parser.RobotsIndex
 	log                 *logger.Log
@@ -22,11 +22,15 @@ type BotUAManager struct {
 func New(s string, i string, l *logger.Log) (*BotUAManager, error) {
 	// we validated the time duration earlier, so ignore any error now
 	iDur, _ := time.ParseDuration(i)
-	sources := strings.Split(s, ",")
+	uL := strings.Split(s, ",")
+	sources := make([]parser.Source, len(uL))
+	for i, u := range uL {
+		sources[i] = parser.Source{URL: u}
+	}
 	bI := make(parser.RobotsIndex)
 
 	uAMan := BotUAManager{
-		urls:                sources,
+		sources:             sources,
 		cacheUpdateInterval: iDur,
 		log:                 l,
 		botIndex:            bI,
@@ -55,7 +59,7 @@ func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 // update fetches the latest robots.txt index from each configured source, merges them, stores it, and updates the timestamp.
 func (b *BotUAManager) update() error {
 	var err error
-	b.botIndex, err = parser.GetIndexFromSources(b.urls)
+	b.botIndex, err = parser.GetIndexFromSources(b.sources)
 	if err != nil {
 		return err
 	}

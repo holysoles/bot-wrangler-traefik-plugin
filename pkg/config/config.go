@@ -67,7 +67,7 @@ func New() *Config {
 		LogLevel:             "INFO",
 		RobotsTXTFilePath:    "",
 		RobotsTXTDisallowAll: false,
-		RobotsSourceURL:      "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json",
+		RobotsSourceURL:      "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@v1.42/robots.json",
 	}
 }
 
