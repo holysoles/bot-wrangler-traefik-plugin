@@ -65,9 +65,14 @@ The follow parameters are exposed to configure this plugin
 
 ### Providing Custom Robots Sources
 
-Presently, two different types of source files are supported. The first is classic `robots.txt` styled formatting, from which a bots list will be extracted. The second is a rich JSON object, following the schema of the ai.robots.txt project's JSON file found [here](https://github.com/ai-robots-txt/ai.robots.txt/blob/main/robots.json). This JSON format allows for additional metadata to be provided in logs which can be used for deeper analysis from administrators.
+Presently, three different types of source files are supported.
 
-In either case, you should ensure that the server serving your source file provides a proper `Content-Type` header. Of particular note, using content from `raw.githubusercontent.com` **fails to do this**. If you wish to use a file hosted on GitHub, check out [jsdelivr](https://github.com/jsdelivr/jsdelivr?tab=readme-ov-file#github) which can proxy the file with the proper headers. It is recommended to pin the source to a specific git tag or commit.
+- A rich JSON object, following the schema of the ai.robots.txt project's JSON file found [here](https://github.com/ai-robots-txt/ai.robots.txt/blob/main/robots.json).
+  - This JSON format allows for additional metadata to be provided in logs which can be used for deeper analysis from administrators.
+- Classic `robots.txt` styled formatting, from which a bots list will be extracted.
+- Simple plain-text lists (newline separated) of bot names which should be blocked. Example [here](https://github.com/ai-robots-txt/ai.robots.txt/blob/main/haproxy-block-ai-bots.txt)
+
+In any case, you should ensure that the server serving your source file provides a proper `Content-Type` header. Of particular note, using content from `raw.githubusercontent.com` **fails to do this**. If you wish to use a file hosted on GitHub, check out [jsdelivr](https://github.com/jsdelivr/jsdelivr?tab=readme-ov-file#github) which can proxy the file with the proper headers. It is recommended to pin the source to a specific git tag or commit.
 
 ### "Tarpits" to Send Bots to
 
