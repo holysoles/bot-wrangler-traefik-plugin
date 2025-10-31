@@ -18,7 +18,7 @@ const (
 	regexUserAgent    = `(?im)(?:^user-agent\s?:\s?)(.*)$`
 	regexAllowRule    = `(?im)(?:^allow\s?:\s?)(.*)$`
 	regexDisallowRule = `(?im)(?:^disallow\s?:\s?)(.*)$`
-	// while RFC 9309 says only letters, _, and - are allowed, in the wild we see almost any non-newline characters
+	// while RFC 9309 says only letters, _, and - are allowed, in the wild we see almost any non-newline characters.
 	regexProductToken = `(?i)(^[^\n\r]+$)` //nolint:gosec
 
 	contentRobotsJSON = "robots.json"
@@ -65,7 +65,7 @@ func (r *RobotsIndex) addTxtRule(e batchEntry) {
 	}
 }
 
-func (s *Source) getContent() (error) {
+func (s *Source) getContent() error {
 	req, err := http.NewRequest(http.MethodGet, s.URL, nil)
 	if err != nil {
 		return err
@@ -216,7 +216,7 @@ func robotsTxtParse(r *bufio.Reader) RobotsIndex {
 	return rIndex
 }
 
-func robotsPlaintextParse(r *bufio.Reader) (RobotsIndex) {
+func robotsPlaintextParse(r *bufio.Reader) RobotsIndex {
 	s := bufio.NewScanner(r)
 	rIndex := make(RobotsIndex)
 	re := regexp.MustCompile(regexProductToken)

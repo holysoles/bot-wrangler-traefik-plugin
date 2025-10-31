@@ -2,9 +2,11 @@ package parser
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -133,24 +135,24 @@ func TestRobotsJSONParseClosedReader(t *testing.T) {
 
 // TestGetSourceContent tests retrieving a http.response for a valid URL
 func TestGetSourceContent(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Add("Content-Type", "text/plain")
 		_, err := fmt.Fprintln(w, "foo bar")
 		if err != nil {
 			t.Error("unexpected error writing response body: " + err.Error())
 		}
 	}))
-	defer server.Close()
+	defer s.Close()
 
-	_, err := getSourceContent(server.URL)
+	err := (&Source{URL: s.URL}).getContent()
 	if err != nil {
 		t.Error("unexpected error when requesting source: " + err.Error())
 	}
 }
 
-// TestGetSourceContentMalformedUrl tests retrieving a http.response for a invalid URL returns an error
-func TestGetSourceContentMalformedUrl(t *testing.T) {
-	_, err := GetIndexFromSources([]string{"%%"})
+// TestGetIndexFromSourcesBadUrl tests retrieving a http.response for a invalid URL returns an error
+func TestGetIndexFromSourcesBadUrl(t *testing.T) {
+	_, err := GetIndexFromSources([]Source{{URL: "%%"}})
 	if err == nil {
 		t.Error("Malformed source URL did not return an error when requesting content")
 	}
@@ -162,7 +164,7 @@ func TestGetIndexFromSourcesHttpErr(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer s.Close()
-	_, err := GetIndexFromSources([]string{s.URL})
+	_, err := GetIndexFromSources([]Source{{URL: s.URL}})
 	if err == nil {
 		t.Error("Malformed source URL did not return an error when requesting content")
 	}
@@ -170,37 +172,58 @@ func TestGetIndexFromSourcesHttpErr(t *testing.T) {
 
 // TestGetSourceContentJSON tests that the correct content type is determined for a JSON source
 func TestGetSourceContentTypeJSON(t *testing.T) {
-	s, _ := newJSONServer(t, "application/json")
-	defer s.Close()
+	serv, _ := newJSONServer(t, "application/json")
+	defer serv.Close()
 
-	r, err := getSourceContent(s.URL)
+	s := &Source{URL: serv.URL}
+	err := s.getContent()
 	if err != nil {
 		t.Error("unexpected error when requesting source: " + err.Error())
 	}
-	_, cT, err := getSourceContentType(r)
+	_, err = s.getContentType()
 	if err != nil {
 		t.Error("unexpected error when detecting content-type of source: " + err.Error())
 	}
-	if cT != contentRobotsJson {
-		t.Errorf("expected content type '%s', got '%s'", contentRobotsJson, cT)
+	if s.contentType != contentRobotsJSON {
+		t.Errorf("expected content type '%s', got '%s'", contentRobotsJSON, s.contentType)
 	}
 }
 
 // TestGetSourceContentJSONSniff tests that the correct content type is determined for a JSON source when mime-type sniffing is used
 func TestGetSourceContentTypeJSONSniff(t *testing.T) {
-	s, _ := newJSONServer(t, "")
-	defer s.Close()
+	serv, _ := newJSONServer(t, "")
+	defer serv.Close()
 
-	r, err := getSourceContent(s.URL)
+	s := &Source{URL: serv.URL}
+	err := s.getContent()
 	if err != nil {
 		t.Error("unexpected error when requesting source: " + err.Error())
 	}
-	_, cT, err := getSourceContentType(r)
+	_, err = s.getContentType()
 	if err != nil {
 		t.Error("unexpected error when detecting content-type of source: " + err.Error())
 	}
-	if cT != contentRobotsJson {
-		t.Errorf("expected content type '%s', got '%s'", contentRobotsJson, cT)
+	if s.contentType != contentRobotsJSON {
+		t.Errorf("expected content type '%s', got '%s'", contentRobotsJSON, s.contentType)
+	}
+}
+
+// TODO TestGetIndexFromContentBadReader tests an error is raised if the content type detection encounters a bad reader
+func TestGetIndexFromContentBadReader(t *testing.T) {
+	serv, _ := newJSONServer(t, "")
+	defer serv.Close()
+
+	s := &Source{URL: serv.URL}
+	err := s.getContent()
+	if err != nil {
+		t.Error("unexpected error when requesting source: " + err.Error())
+	}
+	emptyR := bytes.NewReader([]byte{})
+	emptyRC := io.NopCloser(emptyR)
+	s.response.Body = emptyRC
+	_, err = s.getIndexFromContent()
+	if err == nil {
+		t.Error("expected error when trying to detect content type without valid reader")
 	}
 }
 
@@ -215,7 +238,7 @@ func TestGetIndexFromSourcesJSONMalformed(t *testing.T) {
 	}))
 	defer s.Close()
 
-	_, err := GetIndexFromSources([]string{s.URL})
+	_, err := GetIndexFromSources([]Source{{URL: s.URL}})
 	if err == nil {
 		t.Error("source URL providing malformed JSON did not return an error when parsing content")
 	}
@@ -223,38 +246,39 @@ func TestGetIndexFromSourcesJSONMalformed(t *testing.T) {
 
 // TestGetSourceContentTxt tests that the correct content type is determined for a robots.txt source
 func TestGetSourceContentTypeTxt(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, err := fmt.Fprintln(w, exampleSourceRobotsTxt)
 		if err != nil {
 			t.Error("unexpected error writing response body: " + err.Error())
 		}
 	}))
-	defer server.Close()
+	defer serv.Close()
 
-	r, err := getSourceContent(server.URL)
+	s := &Source{URL: serv.URL}
+	err := s.getContent()
 	if err != nil {
 		t.Error("unexpected error when requesting source: " + err.Error())
 	}
-	_, cT, err := getSourceContentType(r)
+	_, err = s.getContentType()
 	if err != nil {
 		t.Error("unexpected error when detecting content-type of source: " + err.Error())
 	}
-	if cT != contentRobotsTxt {
-		t.Errorf("expected content type '%s', got '%s'", contentRobotsTxt, cT)
+	if s.contentType != contentRobotsTxt {
+		t.Errorf("expected content type '%s', got '%s'", contentRobotsTxt, s.contentType)
 	}
 }
 
-// TestRobotsSourceUpdateTxt tests updating a bot index from a single txt source
+// TestRobotsSourceUpdateTxt tests updating a bot index from a single robots.txt source
 func TestRobotsSourceUpdateTxtSingle(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, err := fmt.Fprintln(w, exampleSourceRobotsTxt)
 		if err != nil {
 			t.Error("unexpected error writing response body: " + err.Error())
 		}
 	}))
-	defer server.Close()
+	defer serv.Close()
 
-	r, err := GetIndexFromSources([]string{server.URL})
+	r, err := GetIndexFromSources([]Source{{URL: serv.URL}})
 	if err != nil {
 		t.Error("unexpected error when parsing robots.txt source: " + err.Error())
 	}
@@ -279,17 +303,33 @@ func TestRobotsSourceUpdateTxtSingle(t *testing.T) {
 	}
 }
 
-// TestRobotsSourceUpdateTxtMulti tests updating a bot index from a single txt source with multiple bot entries and checks its fields
+// TestGetIndexFromContentRefresh tests that if a content type for a source is already known, we parse the list correctly
+func TestGetIndexFromContentRefresh(t *testing.T) {
+	serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := fmt.Fprintln(w, exampleSourceRobotsTxt)
+		if err != nil {
+			t.Error("unexpected error writing response body: " + err.Error())
+		}
+	}))
+	defer serv.Close()
+
+	_, err := GetIndexFromSources([]Source{{URL: serv.URL, contentType: contentRobotsTxt}})
+	if err != nil {
+		t.Error("unexpected error when requesting source: " + err.Error())
+	}
+}
+
+// TestRobotsSourceUpdateTxtMulti tests updating a bot index from a single robots.txt source with multiple bot entries and checks its fields
 func TestRobotsSourceUpdateTxtMulti(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, err := fmt.Fprintln(w, exampleSourceRobotsTxtMulti)
 		if err != nil {
 			t.Error("unexpected error writing response body: " + err.Error())
 		}
 	}))
-	defer server.Close()
+	defer serv.Close()
 
-	r, err := GetIndexFromSources([]string{server.URL})
+	r, err := GetIndexFromSources([]Source{{URL: serv.URL}})
 	if err != nil {
 		t.Error("unexpected error when parsing robots.txt source: " + err.Error())
 	}
@@ -319,7 +359,7 @@ func TestRobotsSourceUpdateJSONSingle(t *testing.T) {
 	s, b := newJSONServer(t, "application/json")
 	defer s.Close()
 
-	r, err := GetIndexFromSources([]string{s.URL})
+	r, err := GetIndexFromSources([]Source{{URL: s.URL}})
 	if err != nil {
 		t.Error("unexpected error when parsing robots json source: " + err.Error())
 	}
@@ -339,7 +379,7 @@ func TestRobotsSourceUpdateJSONSingle(t *testing.T) {
 
 // TestRobotsSourceUpdateJSONSingleInvalid tests updating a bot index from a single json source with a single bot entry that is missing required fields
 func TestRobotsSourceUpdateJSONSingleInvalid(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		b, err := json.Marshal(sourceRobotsJSONBad)
 		if err != nil {
 			t.Error("unexpected error marshaling example JSON: " + err.Error())
@@ -350,19 +390,19 @@ func TestRobotsSourceUpdateJSONSingleInvalid(t *testing.T) {
 			t.Error("unexpected error writing example JSON: " + err.Error())
 		}
 	}))
-	defer server.Close()
+	defer serv.Close()
 
-	_, err := GetIndexFromSources([]string{server.URL})
+	_, err := GetIndexFromSources([]Source{{URL: serv.URL}})
 	if err == nil {
 		t.Error("expected error to be raised when passed source that returns JSON with missing fields")
 	}
 }
 
-// TestRobotsSourceUpdateMultiTxt tests updating a bot index from multiple txt sources
+// TestRobotsSourceUpdateMultiTxt tests updating a bot index from multiple robots.txt sources
 func TestRobotsSourceUpdateMultiTxt(t *testing.T) {
-	u := []string{
-		"https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker/robots.txt/robots.txt",
-		"https://cdn.jsdelivr.net/gh/jonasjacek/robots.txt/robots.txt",
+	u := []Source{
+		{URL: "https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"},
+		{URL: "https://cdn.jsdelivr.net/gh/jonasjacek/robots.txt@latest/robots.txt"},
 	}
 	r, err := GetIndexFromSources(u)
 	if err != nil {
@@ -375,7 +415,7 @@ func TestRobotsSourceUpdateMultiTxt(t *testing.T) {
 
 // TestRobotsSourceUpdateJsonMulti tests updating a bot index from a multiple json sources
 func TestRobotsSourceUpdateJsonMulti(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		b, err := json.Marshal(sourceRobotsJSON)
 		if err != nil {
@@ -386,10 +426,10 @@ func TestRobotsSourceUpdateJsonMulti(t *testing.T) {
 			t.Error("unexpected error writing example JSON: " + err.Error())
 		}
 	}))
-	defer server.Close()
-	u := []string{
-		"https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json",
-		server.URL,
+	defer serv.Close()
+	u := []Source{
+		{URL: "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@latest/robots.json"},
+		{URL: serv.URL},
 	}
 	r, err := GetIndexFromSources(u)
 	if err != nil {
@@ -399,16 +439,16 @@ func TestRobotsSourceUpdateJsonMulti(t *testing.T) {
 	// approximate ai robots json at > 100 entries
 	getL := len(sourceRobotsJSON) + 100
 	if len(r) < getL {
-		t.Errorf("expected %d bot entries, got %d", getL, rL)
+		t.Errorf("expected at least %d bot entries, got %d", getL, rL)
 	}
 }
 
 // TestRobotsSourceUpdateMixed tests updating a bot index from a mix of txt and json sources
 func TestRobotsSourceUpdateMixed(t *testing.T) {
 	var r RobotsIndex
-	u := []string{
-		"https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json",
-		"https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker/robots.txt/robots.txt",
+	u := []Source{
+		{URL: "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@latest/robots.json"},
+		{URL: "https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"},
 	}
 	r, err := GetIndexFromSources(u)
 	if err != nil {
@@ -416,5 +456,23 @@ func TestRobotsSourceUpdateMixed(t *testing.T) {
 	}
 	if len(r) == 0 {
 		t.Error("failed to load any bot entries from multiple mixed robots sources")
+	}
+}
+
+// TestRobotsSourceUpdatePlaintext tests updating a bot index from a single plaintext source
+func TestRobotsSourceUpdatePlaintext(t *testing.T) {
+	var r RobotsIndex
+	u := []Source{
+		{URL: "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@latest/haproxy-block-ai-bots.txt"},
+	}
+	r, err := GetIndexFromSources(u)
+	if err != nil {
+		t.Error("unexpected error when parsing multiple mixed robots sources: " + err.Error())
+	}
+	rL := len(r)
+	// approximate ai robots plaintext list at > 100 entries
+	getL := 100
+	if len(r) < getL {
+		t.Errorf("expected at least %d bot entries, got %d", getL, rL)
 	}
 }
