@@ -31,10 +31,12 @@ LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-rob
 
 # Features
 
+# TODO improve wording
 - Dynamic Updates: Automatically fetches and applies the latest LLM Bot user-agents rules from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt)
-- Traffic Logging: Keep track of bot traffic for analysis and reporting
 - Unified Bot Management: No longer maintain a robots.txt file for each of your applications
-- Customizable Settings: Tailor the plugin's behavior to suit your specific needs and preferences, such as a custom bots list.
+- Fast: Request User-Agents are matched using Aho-Corasick, and cached for improved performance
+- Traffic Logging: Keep track of bot traffic for analysis and reporting
+- Highly Configurable: Tailor behavior to suit your needs: customize your bot list sources, HTTP responses, proxying requests to a tarpit, and more.
 
 # Usage
 

@@ -1,4 +1,4 @@
-.PHONY: lint test vendor clean
+.PHONY: lint test bench vendor clean
 
 export GO111MODULE=on
 
@@ -9,6 +9,9 @@ lint:
 
 test:
 	go test -v -cover -coverprofile=coverage.out ./...
+
+bench:
+	go test -bench=. ./...
 
 test_codecov:
 	cat codecov.yml | curl --data-binary @- https://codecov.io/validate
