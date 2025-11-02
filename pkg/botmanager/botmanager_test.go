@@ -76,6 +76,25 @@ func TestGetBotIndex(t *testing.T) {
 	}
 }
 
+// TestGetBotIndexMulti tests that a default configed BotUAManager can retrieve and merge multiple indexes
+func TestGetBotIndexMulti(t *testing.T) {
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
+	c := config.New()
+	u := "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@latest/robots.json" + "," + "https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"
+
+	b, _ := New(u, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch)
+	botI, err := b.GetBotIndex()
+	if err != nil {
+		t.Error("Unable to get robots index with default configuration. " + err.Error())
+	}
+	gotL := len(botI)
+	// approximate ai robots json at > 100 entries, bad bots at 50+
+	getL := 100 + 50
+	if gotL < getL {
+		t.Errorf("expected at least %d bot entries, got %d", getL, gotL)
+	}
+}
+
 // TestBoxIndexCacheRefresh tests that a call to GetBotIndex() triggers a cache refresh if the cache is considered expired
 func TestBotIndexCacheRefresh(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)

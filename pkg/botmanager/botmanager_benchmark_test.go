@@ -18,8 +18,8 @@ var (
 )
 
 func testGetIndex() parser.RobotsIndex {
-	u := []parser.Source{{URL: exampleSource}}
-	r, _ := parser.GetIndexFromSources(u)
+	u := parser.Source{URL: exampleSource}
+	r, _ := u.GetIndex()
 	return r
 }
 

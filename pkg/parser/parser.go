@@ -59,6 +59,21 @@ type Source struct {
 	contentType string
 }
 
+// GetIndex retrieves the content from a source URL, and returns a RobotsIndex of the content.
+func (s *Source) GetIndex() (RobotsIndex, error) {
+	i := make(RobotsIndex)
+	err := s.getContent()
+	if err != nil {
+		return i, err
+	}
+	defer func() { err = s.response.Body.Close() }()
+	if s.response.StatusCode != http.StatusOK {
+		return i, fmt.Errorf("error retrieving source data from '%s'. Status: %s", s.URL, s.response.Status)
+	}
+	i, err = s.getIndexFromContent()
+	return i, err
+}
+
 func (r *RobotsIndex) addTxtRule(e batchEntry) {
 	for _, u := range e.ua {
 		(*r)[u] = BotUserAgent{AllowPath: e.allow, DisallowPath: e.disallow}
@@ -135,38 +150,6 @@ func (s *Source) getIndexFromContent() (RobotsIndex, error) {
 	}
 
 	return rIndex, err
-}
-
-func (s *Source) getIndex() (RobotsIndex, error) {
-	i := make(RobotsIndex)
-	err := s.getContent()
-	if err != nil {
-		return i, err
-	}
-	defer func() { err = s.response.Body.Close() }()
-	if s.response.StatusCode != http.StatusOK {
-		return i, fmt.Errorf("error retrieving source data from '%s'. Status: %s", s.URL, s.response.Status)
-	}
-	i, err = s.getIndexFromContent()
-	return i, err
-}
-
-// GetIndexFromSources manages retrieving robots source from slice of URLs, and parses it accordingly to a merged RobotsIndex.
-// TODO move this into botmanager..
-func GetIndexFromSources(l []Source) (RobotsIndex, error) {
-	i := make(RobotsIndex)
-	for _, s := range l {
-		n, err := s.getIndex()
-		if err != nil {
-			return i, err
-		}
-		// could use golang.org/x/exp/maps, but this saves us a dep
-		//nolint:modernize
-		for k, v := range n {
-			i[k] = v
-		}
-	}
-	return i, nil
 }
 
 func robotsTxtParse(r *bufio.Reader) RobotsIndex {

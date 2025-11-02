@@ -84,8 +84,8 @@ func TestSearchNoMatch(t *testing.T) {
 
 // TestSearchPrefixMatch constructs a new Aho-Corasick automaton from a large dataset and runs searches for both a match and no match
 func TestSearchLargeIndex(t *testing.T) {
-	u := []parser.Source{{URL: "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json"}}
-	r, _ := parser.GetIndexFromSources(u)
+	u := parser.Source{URL: "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json"}
+	r, _ := u.GetIndex()
 	a := NewFromIndex(r)
 
 	t.Run("NoMatch", func(t *testing.T) {

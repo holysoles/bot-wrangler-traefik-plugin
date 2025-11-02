@@ -143,11 +143,19 @@ func (b *BotUAManager) fastSearch(u string) (string, bool) {
 
 // update fetches the latest robots.txt index from each configured source, merges them, stores it, and updates the timestamp.
 func (b *BotUAManager) update() error {
-	var err error
-	b.botIndex, err = parser.GetIndexFromSources(b.sources)
-	if err != nil {
-		return err
+	newI := parser.RobotsIndex{}
+	for _, s := range b.sources {
+		n, err := s.GetIndex()
+		if err != nil {
+			return err
+		}
+		// could use golang.org/x/exp/maps, but this saves us a dep
+		//nolint:modernize
+		for k, v := range n {
+			newI[k] = v
+		}
 	}
+	b.botIndex = newI
 	b.ahoCorasick = ahocorasick.NewFromIndex(b.botIndex)
 	b.cache = newUserAgentCache(b.cache.limit)
 	b.lastUpdate = time.Now()
