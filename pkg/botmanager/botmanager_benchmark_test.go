@@ -3,7 +3,7 @@ package botmanager
 import (
 	"testing"
 
-	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/aho_corasick"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/ahocorasick"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 )
 
@@ -24,26 +24,26 @@ func testGetIndex() parser.RobotsIndex {
 }
 
 func BenchmarkSimpleSearchShort(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = bM.slowSearch(exampleShortString)
 	}
 }
 func BenchmarkSimpleSearchLong(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, _ = bM.slowSearch(exampleLongString)
 	}
 }
 
 func BenchmarkAhoCorsasickSearchShort(b *testing.B) {
-	bM.ahoCorasick = aho_corasick.NewFromIndex(bM.botIndex)
-	for i := 0; i < b.N; i++ {
+	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
+	for range b.N {
 		_, _ = bM.fastSearch(exampleShortString)
 	}
 }
 
 func BenchmarkAhoCorsasickSearchLong(b *testing.B) {
-	bM.ahoCorasick = aho_corasick.NewFromIndex(bM.botIndex)
-	for i := 0; i < b.N; i++ {
+	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
+	for range b.N {
 		_, _ = bM.fastSearch(exampleLongString)
 	}
 }

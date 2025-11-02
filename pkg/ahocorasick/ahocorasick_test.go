@@ -1,4 +1,4 @@
-package aho_corasick
+package ahocorasick
 
 import (
 	"testing"
@@ -23,7 +23,6 @@ var (
 // TestNewFromIndex constructs a new Aho-Corasick automaton and inspects its structure
 func TestNewFromIndex(t *testing.T) {
 	a := NewFromIndex(r)
-	// TODO check complexity?
 	check := 'G'
 	g, ok := a.next[check]
 	if !ok {
@@ -41,9 +40,9 @@ func TestNewFromIndex(t *testing.T) {
 	if o.endsHere != checkStr {
 		t.Errorf("expected '%c' to be have word '%s' set as endsHere, got '%s'", check, checkStr, o.endsHere)
 	}
-
 }
 
+// TestSearchExactMatch constructs a new Aho-Corasick automaton and runs a search for a string with an exact match.
 func TestSearchExactMatch(t *testing.T) {
 	a := NewFromIndex(r)
 	check := "GPTBot"
@@ -53,6 +52,7 @@ func TestSearchExactMatch(t *testing.T) {
 	}
 }
 
+// TestSearchPrefixMatch constructs a new Aho-Corasick automaton and runs a search for a string with a leading match.
 func TestSearchPrefixMatch(t *testing.T) {
 	a := NewFromIndex(r)
 	check := "GPTBot followed by words"
@@ -61,6 +61,8 @@ func TestSearchPrefixMatch(t *testing.T) {
 		t.Errorf("expected match for '%s', did not find match", check)
 	}
 }
+
+// TestSearchPrefixMatch constructs a new Aho-Corasick automaton and runs a search for a string with a tailing match.
 func TestSearchSuffixMatch(t *testing.T) {
 	a := NewFromIndex(r)
 	check := "some words followed by GPTBot"
@@ -69,6 +71,8 @@ func TestSearchSuffixMatch(t *testing.T) {
 		t.Errorf("expected match for '%s', did not find match", check)
 	}
 }
+
+// TestSearchPrefixMatch constructs a new Aho-Corasick automaton and runs a search for a string with no match.
 func TestSearchNoMatch(t *testing.T) {
 	a := NewFromIndex(r)
 	check := "just some words"
@@ -78,6 +82,7 @@ func TestSearchNoMatch(t *testing.T) {
 	}
 }
 
+// TestSearchPrefixMatch constructs a new Aho-Corasick automaton from a large dataset and runs searches for both a match and no match
 func TestSearchLargeIndex(t *testing.T) {
 	u := []parser.Source{{URL: "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json"}}
 	r, _ := parser.GetIndexFromSources(u)
@@ -99,5 +104,3 @@ func TestSearchLargeIndex(t *testing.T) {
 		}
 	})
 }
-
-// TODO benchmarks? node sizes?

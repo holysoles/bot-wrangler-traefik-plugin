@@ -98,3 +98,13 @@ func TestConfigBadCacheUpdateInterval(t *testing.T) {
 		t.Error("ValidateConfig didn't fail an invalid CacheUpdateInterval.")
 	}
 }
+
+// TestConfigBadCacheSize overrides a default config with an invalid CacheSize and checks that an error is raised by ValidateConfig().
+func TestConfigBadCacheSize(t *testing.T) {
+	c := New()
+	c.CacheSize = -5
+	err := c.ValidateConfig()
+	if err == nil {
+		t.Error("ValidateConfig didn't fail an invalid CacheSize.")
+	}
+}

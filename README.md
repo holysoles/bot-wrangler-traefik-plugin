@@ -55,7 +55,8 @@ The follow parameters are exposed to configure this plugin
 | Name | Default Value | Description |
 |------|---------------|-------------|
 |enabled|`true`|Whether or not the plugin should be enabled|
-|cacheUpdateInterval|`24h`|How frequently the robots list should be updated|
+|cacheUpdateInterval|`24h`|How frequently sources should be refreshed for new bots. Also flushes the User-Agent cache.|
+|cacheSize|`300`|The maximum size of the cache of User-Agent to Bot Name mappings. Rolls over when full.|
 |botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return static error response), `PROXY` (log and proxy to `botProxyUrl`)|
 |botProxyUrl|`""`|The URL to pass a bot's request to, if `PROXY` is the set `botAction`|
 |botBlockHttpCode|`403`|The HTTP response code that should be returned when a `BLOCK` action is taken|
@@ -64,6 +65,7 @@ The follow parameters are exposed to configure this plugin
 |robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. If one is not provided, a default will be generated based on the user agents from your `robotsSourceUrl`. See the `robots.txt` in the repo|
 |robotsTxtDisallowAll|`false`|A config option to generate a robots.txt file that will disallow all user-agents. This does not change the blocking behavior of the middleware.|
 |robotsSourceUrl|`https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json`|A comma separated list of URLs to retrieve a bot list. You can provide your own, but read the notes below!|
+|useFastMatch|`true`|When `true`, use an Aho-Corasick automaton for speedily matching uncached User-Agents against Bot Names. Consumes more memory. `false` relies on a much slower, simple regex match.|
 
 ### Providing Custom Robots Sources
 

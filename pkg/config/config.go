@@ -48,11 +48,13 @@ type Config struct {
 	BotBlockHTTPCode     int    `json:"botBlockHttpCode,omitempty"`
 	BotBlockHTTPResponse string `json:"botBlockHttpResponse,omitempty"`
 	BotProxyURL          string `json:"botProxyUrl,omitempty"`
+	CacheSize            int    `json:"cacheSize,omitempty"`
 	CacheUpdateInterval  string `json:"cacheUpdateInterval,omitempty"`
 	LogLevel             string `json:"logLevel,omitempty"`
 	RobotsTXTFilePath    string `json:"robotsTxtFilePath,omitempty"`
 	RobotsTXTDisallowAll bool   `json:"robotsTxtDisallowAll,omitempty"`
 	RobotsSourceURL      string `json:"robotsSourceUrl,omitempty"`
+	UseFastMatch         bool   `json:"useFastMatch,omitempty"`
 }
 
 // New creates the default plugin configuration.
@@ -63,11 +65,13 @@ func New() *Config {
 		BotBlockHTTPCode:     http.StatusForbidden,
 		BotBlockHTTPResponse: "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource",
 		BotProxyURL:          "",
+		CacheSize:            300, //TODO right val?
 		CacheUpdateInterval:  "24h",
 		LogLevel:             "INFO",
 		RobotsTXTFilePath:    "",
 		RobotsTXTDisallowAll: false,
 		RobotsSourceURL:      "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@v1.42/robots.json",
+		UseFastMatch:         true,
 	}
 }
 
@@ -109,6 +113,12 @@ func (c *Config) ValidateConfig() error {
 	if err != nil {
 		return fmt.Errorf("ValidateConfig: CacheUpdateInterval must be a time duration string. Got '%s'", c.CacheUpdateInterval)
 	}
+	// CacheSize
+	if c.CacheSize < 1 {
+		return fmt.Errorf("ValidateConfig: CacheSize must be a positive integer. Got '%d'", c.CacheSize)
+	}
+	// UseFastMatch
+	// no validation since boolean
 
 	return nil
 }

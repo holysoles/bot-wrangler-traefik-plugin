@@ -1,4 +1,5 @@
-package aho_corasick
+// Package ahocorasick provides an implementation of the Aho-Corasick string-search algorithm to search a RobotsIndex.
+package ahocorasick
 
 import (
 	"fmt"
@@ -6,15 +7,16 @@ import (
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 )
 
+// Node represents a single node in the linked Aho-Corasick automaton.
 type Node struct {
-	letter rune
-	// TODO could be array of 256 for all ASCII
+	letter     rune
 	next       map[rune]*Node
 	endsHere   string
 	output     bool
 	suffixLink *Node
 }
 
+// NewFromIndex is a constructor that returns an automaton based on the provided RobotsIndex.
 func NewFromIndex(m parser.RobotsIndex) *Node {
 	arr := make([]string, len(m))
 	i := 0
@@ -52,6 +54,25 @@ func NewFromIndex(m parser.RobotsIndex) *Node {
 	return start
 }
 
+// Search searches the provided string against the constructed automaton's dictionary for a match.
+func (a *Node) Search(s string) (string, bool) {
+	curr := a
+	match := false
+	fmt.Print()
+	for _, l := range s {
+		n, ok := curr.next[l]
+		if ok {
+			curr = n
+		} else {
+			curr = curr.suffixLink
+		}
+		if curr.output {
+			match = true
+			break
+		}
+	}
+	return curr.endsHere, match
+}
 func (a *Node) buildLinks() {
 	// BFS, recurse towards root to find longest suffix
 	// root's suffixLink is itself
@@ -81,23 +102,4 @@ func (a *Node) setSuffixLink(p *Node) {
 		}
 		ancestor = ancestor.suffixLink
 	}
-}
-
-func (a *Node) Search(s string) (string, bool) {
-	curr := a
-	match := false
-	fmt.Print()
-	for _, l := range s {
-		n, ok := curr.next[l]
-		if ok {
-			curr = n
-		} else {
-			curr = curr.suffixLink
-		}
-		if curr.output {
-			match = true
-			break
-		}
-	}
-	return curr.endsHere, match
 }

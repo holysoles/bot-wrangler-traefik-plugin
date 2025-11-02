@@ -2,23 +2,58 @@
 package botmanager
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/aho_corasick"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/ahocorasick"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 )
 
-// TODO max size
-type userAgentCache map[string]string
+type userAgentCache struct {
+	cursor int
+	data   map[string]string
+	keys   []*string
+	limit  int
+}
+
+func newUserAgentCache(s int) *userAgentCache {
+	return &userAgentCache{
+		data:  make(map[string]string, s),
+		keys:  make([]*string, s),
+		limit: s,
+	}
+}
+
+func (c *userAgentCache) get(k string) (string, bool) {
+	v, ok := c.data[k]
+	return v, ok
+}
+
+func (c *userAgentCache) set(k string, v string) {
+	// rollover
+	if c.cursor >= c.limit {
+		c.cursor = 0
+	}
+
+	// free up a slot if we need it
+	p := c.keys[c.cursor]
+	if p != nil {
+		delete(c.data, *p)
+	}
+
+	c.data[k] = v
+	c.keys[c.cursor] = &k
+	c.cursor++
+}
 
 // BotUAManager acts as a management layer around checking the current bot index, querying the index source, and refreshing the cache.
 type BotUAManager struct {
-	ahoCorasick         *aho_corasick.Node
+	ahoCorasick         *ahocorasick.Node
 	botIndex            parser.RobotsIndex
-	cache               userAgentCache
+	cache               *userAgentCache
 	cacheUpdateInterval time.Duration
 	lastUpdate          time.Time
 	log                 *logger.Log
@@ -27,7 +62,7 @@ type BotUAManager struct {
 }
 
 // New initializes a BotUAManager instance.
-func New(s string, i string, l *logger.Log) (*BotUAManager, error) {
+func New(s string, i string, l *logger.Log, cS int, sF bool) (*BotUAManager, error) {
 	// we validated the time duration earlier, so ignore any error now
 	iDur, _ := time.ParseDuration(i)
 	uL := strings.Split(s, ",")
@@ -38,11 +73,12 @@ func New(s string, i string, l *logger.Log) (*BotUAManager, error) {
 	bI := make(parser.RobotsIndex)
 
 	uAMan := BotUAManager{
-		sources:             sources,
-		cache:               make(userAgentCache),
+		botIndex:            bI,
+		cache:               newUserAgentCache(cS),
 		cacheUpdateInterval: iDur,
 		log:                 l,
-		botIndex:            bI,
+		sources:             sources,
+		searchFast:          sF,
 	}
 	err := uAMan.update()
 	return &uAMan, err
@@ -65,21 +101,28 @@ func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 	return b.botIndex, err
 }
 
-// TODO def
-func (b *BotUAManager) Search(u string) (parser.BotUserAgent, bool) {
-	botName, found := b.cache[u]
+// Search checks if the provided user-agent has a (partial) match in the botIndex.
+func (b *BotUAManager) Search(u string) (string, bool, error) {
+	var botName string
+	var found bool
+	var err error
+	if b.cache == nil {
+		err = errors.New("attempted to search uninitialized BotManager. Ensure it is created with the New() constructor")
+		return botName, found, err
+	}
+	botName, found = b.cache.get(u)
 	if !found {
 		if b.searchFast {
 			botName, found = b.fastSearch(u)
-			b.cache[u] = botName
 		} else {
 			botName, found = b.slowSearch(u)
-			b.cache[u] = botName
 		}
+		b.cache.set(u, botName)
 	}
-	return b.botIndex[botName], found
+	return botName, found, err
 }
 
+// slowSearch runs a match search in a simple for loop with the regexp library.
 func (b *BotUAManager) slowSearch(u string) (string, bool) {
 	var match bool
 	var nameMatch string
@@ -93,8 +136,8 @@ func (b *BotUAManager) slowSearch(u string) (string, bool) {
 	return nameMatch, match
 }
 
+// fastSearch runs a match search using a Aho-Corasick automaton.
 func (b *BotUAManager) fastSearch(u string) (string, bool) {
-	// TODO return err if not configured
 	return b.ahoCorasick.Search(u)
 }
 
@@ -105,7 +148,8 @@ func (b *BotUAManager) update() error {
 	if err != nil {
 		return err
 	}
-	b.ahoCorasick = aho_corasick.NewFromIndex(b.botIndex)
+	b.ahoCorasick = ahocorasick.NewFromIndex(b.botIndex)
+	b.cache = newUserAgentCache(b.cache.limit)
 	b.lastUpdate = time.Now()
 	return nil
 }

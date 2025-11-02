@@ -208,7 +208,7 @@ func TestGetSourceContentTypeJSONSniff(t *testing.T) {
 	}
 }
 
-// TODO TestGetIndexFromContentBadReader tests an error is raised if the content type detection encounters a bad reader
+// TestGetIndexFromContentBadReader tests an error is raised if the content type detection encounters a bad reader
 func TestGetIndexFromContentBadReader(t *testing.T) {
 	serv, _ := newJSONServer(t, "")
 	defer serv.Close()
