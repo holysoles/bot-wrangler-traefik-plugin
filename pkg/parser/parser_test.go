@@ -153,7 +153,7 @@ func TestGetSourceContent(t *testing.T) {
 // TestGetIndexFromSourcesBadUrl tests retrieving a http.response for a invalid URL returns an error
 func TestGetIndexFromSourcesBadUrl(t *testing.T) {
 	s := &Source{URL: "%%"}
-	err := s.getContent()
+	_, err := s.GetIndex()
 	if err == nil {
 		t.Error("Malformed source URL did not return an error when requesting content")
 	}
@@ -167,7 +167,7 @@ func TestGetIndexFromSourcesHttpErr(t *testing.T) {
 	defer serv.Close()
 
 	s := &Source{URL: serv.URL}
-	err := s.getContent()
+	_, err := s.GetIndex()
 	if err == nil {
 		t.Error("Malformed source URL did not return an error when requesting content")
 	}
