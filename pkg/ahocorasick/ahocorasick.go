@@ -89,17 +89,19 @@ func (a *Node) buildLinks() {
 }
 
 func (a *Node) setSuffixLink(p *Node) {
-	ancestor := p.suffixLink
 	for {
-		// root child
-		if ancestor == ancestor.suffixLink {
-			a.suffixLink = ancestor
+		p = p.suffixLink
+
+		link, childMatch := p.next[a.letter]
+		if childMatch && a != link {
+			a.suffixLink = link
 			break
 		}
-		if ancestor.next[a.letter] != nil {
-			a.suffixLink = ancestor.next[a.letter]
+
+		// when true, p is the root node
+		if p == p.suffixLink {
+			a.suffixLink = p
 			break
 		}
-		ancestor = ancestor.suffixLink
 	}
 }
