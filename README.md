@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin/graph/badge.svg?token=1GCKDQSR7R)](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin)
 ![Issues](https://img.shields.io/github/issues/holysoles/bot-wrangler-traefik-plugin)
 
-Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log, block, or otherwise handle traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessibile only to those desired.
+Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log, block, or otherwise handle traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessible only to those desired.
 
 By default, Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt). Any queries to a service where this middleware is implemented will provide this list when `/robots.txt` is queried. If an incoming request matches the bot list, meaning it is ignoring your `robots.txt`, a configurable remediation action is taken:
 
@@ -67,7 +67,7 @@ The follow parameters are exposed to configure this plugin
 |robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. If one is not provided, a default will be generated based on the user agents from your `robotsSourceUrl`. See the `robots.txt` in the repo|
 |robotsTxtDisallowAll|`false`|A config option to generate a robots.txt file that will disallow all user-agents. This does not change the blocking behavior of the middleware.|
 |robotsSourceUrl|`https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json`|A comma separated list of URLs to retrieve a bot list. You can provide your own, but read the notes below!|
-|useFastMatch|`true`|When `true`, use an Aho-Corasick automaton for speedily matching uncached User-Agents against Bot Names. Consumes more memory. `false` relies on a much slower, simple regex match.|
+|useFastMatch|`true`|When `true`, use an Aho-Corasick automaton for speedily matching uncached User-Agents against Bot Names. Consumes more memory. `false` relies on a slower, simple substring match.|
 
 ### Providing Custom Robots Sources
 

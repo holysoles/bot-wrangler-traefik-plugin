@@ -3,13 +3,16 @@ package botmanager
 
 import (
 	"errors"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/ahocorasick"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
+)
+
+var (
+	errBotManagerNoInit = errors.New("attempted to search uninitialized BotManager. Ensure it is created with the New() constructor")
 )
 
 type userAgentCache struct {
@@ -105,10 +108,8 @@ func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 func (b *BotUAManager) Search(u string) (string, bool, error) {
 	var botName string
 	var found bool
-	var err error
 	if b.cache == nil {
-		err = errors.New("attempted to search uninitialized BotManager. Ensure it is created with the New() constructor")
-		return botName, found, err
+		return botName, found, errBotManagerNoInit
 	}
 	botName, found = b.cache.get(u)
 	if !found {
@@ -119,15 +120,15 @@ func (b *BotUAManager) Search(u string) (string, bool, error) {
 		}
 		b.cache.set(u, botName)
 	}
-	return botName, found, err
+	return botName, found, nil
 }
 
-// slowSearch runs a match search in a simple for loop with the regexp library.
+// slowSearch runs a substring search in a simple for loop.
 func (b *BotUAManager) slowSearch(u string) (string, bool) {
 	var match bool
 	var nameMatch string
 	for name := range b.botIndex {
-		match, _ = regexp.MatchString(name, u)
+		match = strings.Contains(u, name)
 		if match {
 			nameMatch = name
 			break

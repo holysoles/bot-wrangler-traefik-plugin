@@ -116,7 +116,7 @@ func (c *Config) ValidateConfig() error {
 		return fmt.Errorf("ValidateConfig: CacheUpdateInterval must be a time duration string. Got '%s'", c.CacheUpdateInterval)
 	}
 	// CacheSize
-	if c.CacheSize < 1 {
+	if c.CacheSize <= 0 {
 		return fmt.Errorf("ValidateConfig: CacheSize must be a positive integer. Got '%d'", c.CacheSize)
 	}
 	// UseFastMatch
