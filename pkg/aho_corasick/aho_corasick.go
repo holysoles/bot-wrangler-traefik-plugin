@@ -7,7 +7,8 @@ import (
 )
 
 type Node struct {
-	letter     rune
+	letter rune
+	// TODO could be array of 256 for all ASCII
 	next       map[rune]*Node
 	endsHere   string
 	output     bool
@@ -60,14 +61,13 @@ func (a *Node) buildLinks() {
 		curr := q[0]
 		q = q[1:]
 		for _, n := range curr.next {
-			n.setSuffixLink(curr, a)
+			n.setSuffixLink(curr)
 			q = append(q, n)
 		}
 	}
 }
 
-func (a *Node) setSuffixLink(p *Node, root *Node) {
-	l := a.letter
+func (a *Node) setSuffixLink(p *Node) {
 	ancestor := p.suffixLink
 	for {
 		// root child
@@ -75,14 +75,9 @@ func (a *Node) setSuffixLink(p *Node, root *Node) {
 			a.suffixLink = ancestor
 			break
 		}
-		for r, v := range ancestor.next {
-			if l == r {
-				a.suffixLink = v
-				break
-			}
-			if v == root {
-				a.suffixLink = root
-			}
+		if ancestor.next[a.letter] != nil {
+			a.suffixLink = ancestor.next[a.letter]
+			break
 		}
 		ancestor = ancestor.suffixLink
 	}

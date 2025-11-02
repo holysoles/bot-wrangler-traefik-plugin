@@ -67,37 +67,35 @@ func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 
 // TODO def
 func (b *BotUAManager) Search(u string) (parser.BotUserAgent, bool) {
-	var uAInfo parser.BotUserAgent
-	var inList bool
-	botName, isCached := b.cache[u]
-	if isCached {
-		uAInfo, inList = b.botIndex[botName]
-	} else if b.searchFast {
-		uAInfo, inList = b.fastSearch(u)
-		b.cache[u] = botName
-	} else {
-		uAInfo, inList = b.slowSearch(u)
-		b.cache[u] = botName
-	}
-	return uAInfo, inList
-}
-
-func (b *BotUAManager) slowSearch(u string) (parser.BotUserAgent, bool) {
-	for name, info := range b.botIndex {
-		match, _ := regexp.MatchString(name, u)
-		if match {
-			return info, true
+	botName, found := b.cache[u]
+	if !found {
+		if b.searchFast {
+			botName, found = b.fastSearch(u)
+			b.cache[u] = botName
+		} else {
+			botName, found = b.slowSearch(u)
+			b.cache[u] = botName
 		}
 	}
-	return parser.BotUserAgent{}, false
+	return b.botIndex[botName], found
 }
 
-func (b *BotUAManager) fastSearch(u string) (parser.BotUserAgent, bool) {
-	botName, match := b.ahoCorasick.Search(u)
-	if match {
-		return b.botIndex[botName], true
+func (b *BotUAManager) slowSearch(u string) (string, bool) {
+	var match bool
+	var nameMatch string
+	for name := range b.botIndex {
+		match, _ = regexp.MatchString(name, u)
+		if match {
+			nameMatch = name
+			break
+		}
 	}
-	return parser.BotUserAgent{}, false
+	return nameMatch, match
+}
+
+func (b *BotUAManager) fastSearch(u string) (string, bool) {
+	// TODO return err if not configured
+	return b.ahoCorasick.Search(u)
 }
 
 // update fetches the latest robots.txt index from each configured source, merges them, stores it, and updates the timestamp.

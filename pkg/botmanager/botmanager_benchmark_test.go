@@ -13,28 +13,28 @@ const (
 	exampleSource      = "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json"
 )
 
-func getIndex() parser.RobotsIndex {
-	u := []string{exampleSource}
-	r, _ := parser.GetIndexFromSources(u)
+var (
+	bM = BotUAManager{botIndex: testGetIndex()}
+)
 
+func testGetIndex() parser.RobotsIndex {
+	u := []parser.Source{{URL: exampleSource}}
+	r, _ := parser.GetIndexFromSources(u)
 	return r
 }
 
 func BenchmarkSimpleSearchShort(b *testing.B) {
-	bM := BotUAManager{botIndex: getIndex()}
 	for i := 0; i < b.N; i++ {
 		_, _ = bM.slowSearch(exampleShortString)
 	}
 }
 func BenchmarkSimpleSearchLong(b *testing.B) {
-	bM := BotUAManager{botIndex: getIndex()}
 	for i := 0; i < b.N; i++ {
 		_, _ = bM.slowSearch(exampleLongString)
 	}
 }
 
 func BenchmarkAhoCorsasickSearchShort(b *testing.B) {
-	bM := BotUAManager{botIndex: getIndex()}
 	bM.ahoCorasick = aho_corasick.NewFromIndex(bM.botIndex)
 	for i := 0; i < b.N; i++ {
 		_, _ = bM.fastSearch(exampleShortString)
@@ -42,7 +42,6 @@ func BenchmarkAhoCorsasickSearchShort(b *testing.B) {
 }
 
 func BenchmarkAhoCorsasickSearchLong(b *testing.B) {
-	bM := BotUAManager{botIndex: getIndex()}
 	bM.ahoCorasick = aho_corasick.NewFromIndex(bM.botIndex)
 	for i := 0; i < b.N; i++ {
 		_, _ = bM.fastSearch(exampleLongString)

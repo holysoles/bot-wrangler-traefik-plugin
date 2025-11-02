@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/aho_corasick"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
@@ -106,5 +107,32 @@ func TestBotIndexBadUpdate(t *testing.T) {
 	}
 	if err == nil {
 		t.Error("BotUAManager.GetBotIndex() did not return an error during a problematic refresh")
+	}
+}
+
+// TestBotIndexSearchSlow tests that the bot index can be search via simple matching
+func TestBotIndexSearchSlow(t *testing.T) {
+	bM = BotUAManager{
+		botIndex:   testGetIndex(),
+		cache:      userAgentCache{},
+		searchFast: false,
+	}
+	_, match := bM.Search(exampleLongString)
+	if !match {
+		t.Errorf("slowSearch method did not return a match for '%s'", exampleLongString)
+	}
+}
+
+// TestBotIndexSearchFast tests that the bot index can be search via simple matching
+func TestBotIndexSearchFast(t *testing.T) {
+	bM = BotUAManager{
+		botIndex:   testGetIndex(),
+		cache:      userAgentCache{},
+		searchFast: true,
+	}
+	bM.ahoCorasick = aho_corasick.NewFromIndex(bM.botIndex)
+	_, match := bM.Search(exampleLongString)
+	if !match {
+		t.Errorf("slowSearch method did not return a match for '%s'", exampleLongString)
 	}
 }
