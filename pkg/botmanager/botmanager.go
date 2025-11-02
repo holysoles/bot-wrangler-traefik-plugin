@@ -156,7 +156,9 @@ func (b *BotUAManager) update() error {
 		}
 	}
 	b.botIndex = newI
-	b.ahoCorasick = ahocorasick.NewFromIndex(b.botIndex)
+	if b.searchFast {
+		b.ahoCorasick = ahocorasick.NewFromIndex(b.botIndex)
+	}
 	b.cache = newUserAgentCache(b.cache.limit)
 	b.lastUpdate = time.Now()
 	return nil

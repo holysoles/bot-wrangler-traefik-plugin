@@ -4,9 +4,9 @@
 [![codecov](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin/graph/badge.svg?token=1GCKDQSR7R)](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin)
 ![Issues](https://img.shields.io/github/issues/holysoles/bot-wrangler-traefik-plugin)
 
-Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log, block, or otherwise handle traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessibility only to those desired.
+Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log, block, or otherwise handle traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessibile only to those desired.
 
-LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt). Any queries to a service where this middleware is implemented will provide this list when `/robots.txt` is queried. If a request is from a bot in the LLM bot list, meaning its ignoring `robots.txt`, a configurable remediation action is taken:
+By default, Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt). Any queries to a service where this middleware is implemented will provide this list when `/robots.txt` is queried. If an incoming request matches the bot list, meaning it is ignoring your `robots.txt`, a configurable remediation action is taken:
 
 - `PASS`: Do nothing (no-op)
 - `LOG`: write a log message about the visitor, the default behavior
@@ -15,28 +15,30 @@ LLM Bot user agents are retrieved from [ai-robots-txt](https://github.com/ai-rob
 
 ## Table Of Contents
 
-- [Bot Wrangler Traefik Plugin](#bot-wrangler-traefik-plugin)
-  - [Table Of Contents](#table-of-contents)
+<!-- toc -->
+
 - [Features](#features)
 - [Usage](#usage)
-  - [Considerations](#considerations)
-  - [Configuration](#configuration)
-    - ["Tarpits" to Send Bots to](#tarpits-to-send-bots-to)
-  - [Deployment](#deployment)
-    - [Generic](#generic)
-    - [Kubernetes](#kubernetes)
-    - [Local/Dev Mode](#localdev-mode)
+  * [Considerations](#considerations)
+  * [Configuration](#configuration)
+    + [Providing Custom Robots Sources](#providing-custom-robots-sources)
+    + ["Tarpits" to Send Bots to](#tarpits-to-send-bots-to)
+  * [Deployment](#deployment)
+    + [Generic](#generic)
+    + [Kubernetes](#kubernetes)
+    + [Local/Dev Mode](#localdev-mode)
 - [Contributions](#contributions)
 - [Credits](#credits)
 
+<!-- tocstop -->
+
 # Features
 
-# TODO improve wording
-- Dynamic Updates: Automatically fetches and applies the latest LLM Bot user-agents rules from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt)
+- Dynamic Updates: Automatically fetches and applies the latest LLM Bot user-agents rules from [ai-robots-txt](https://github.com/ai-robots-txt/ai.robots.txt), with support for additional sources
 - Unified Bot Management: No longer maintain a robots.txt file for each of your applications
-- Fast: Request User-Agents are matched using Aho-Corasick, and cached for improved performance
+- Fast: Employs Aho-Corasick for efficient user-agent matching with intelligent caching
 - Traffic Logging: Keep track of bot traffic for analysis and reporting
-- Highly Configurable: Tailor behavior to suit your needs: customize your bot list sources, HTTP responses, proxying requests to a tarpit, and more.
+- Highly Configurable: Customize bot sources, HTTP responses, request routing, and defense strategies
 
 # Usage
 
@@ -56,7 +58,7 @@ The follow parameters are exposed to configure this plugin
 |------|---------------|-------------|
 |enabled|`true`|Whether or not the plugin should be enabled|
 |cacheUpdateInterval|`24h`|How frequently sources should be refreshed for new bots. Also flushes the User-Agent cache.|
-|cacheSize|`300`|The maximum size of the cache of User-Agent to Bot Name mappings. Rolls over when full.|
+|cacheSize|`500`|The maximum size of the cache of User-Agent to Bot Name mappings. Rolls over when full.|
 |botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return static error response), `PROXY` (log and proxy to `botProxyUrl`)|
 |botProxyUrl|`""`|The URL to pass a bot's request to, if `PROXY` is the set `botAction`|
 |botBlockHttpCode|`403`|The HTTP response code that should be returned when a `BLOCK` action is taken|

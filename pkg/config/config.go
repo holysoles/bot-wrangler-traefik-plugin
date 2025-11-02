@@ -21,6 +21,8 @@ const (
 	LogLevelInfo  = "INFO"
 	LogLevelWarn  = "WARN"
 	LogLevelError = "ERROR"
+
+	defaultMaxCacheSize = 500
 )
 
 // default robots.txt template that will be rendered.
@@ -65,7 +67,7 @@ func New() *Config {
 		BotBlockHTTPCode:     http.StatusForbidden,
 		BotBlockHTTPResponse: "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource",
 		BotProxyURL:          "",
-		CacheSize:            300, //TODO right val?
+		CacheSize:            defaultMaxCacheSize,
 		CacheUpdateInterval:  "24h",
 		LogLevel:             "INFO",
 		RobotsTXTFilePath:    "",
