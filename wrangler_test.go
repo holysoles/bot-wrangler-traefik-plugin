@@ -18,8 +18,8 @@ import (
 
 // most common user agent as of 3/31/2025 from https://microlink.io/user-agents
 const (
-	RealUserAgent string = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
-	BotUserAgent  string = "GPTBot"
+	RealUserAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36`
+	BotUserAgent  = `Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.0; +https://openai.com/gptbot)`
 )
 
 // We need to suppress logging, and in some cases validate that logs were written
@@ -326,7 +326,8 @@ func TestWranglerBlockAction(t *testing.T) {
 	if !want {
 		t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' did not match expected response", action, BotUserAgent)
 	}
-	wantLog := regexp.MustCompile(`.* level=INFO msg="ServeHTTP: User agent '` + ua + `' considered AI Robot." pluginName=bot-wrangler-traefik-plugin userAgent="?` + ua +
+	uaEscape := regexp.QuoteMeta(ua)
+	wantLog := regexp.MustCompile(`.* level=INFO msg="ServeHTTP: User agent '` + uaEscape + `' considered AI Robot." pluginName=bot-wrangler-traefik-plugin userAgent="?` + uaEscape +
 		`"? sourceIP="?.*"? requestedPath="?.*"? remediationAction=BLOCK operator="?.+"? respectsRobotsTxt="?.+"? function="?.+"? description="?.+"?` + "\n")
 	got := testLogOut.String()
 	if !wantLog.MatchString(got) {

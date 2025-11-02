@@ -27,7 +27,7 @@ const (
 )
 
 // BotMetadata holds metadata about a bot's user agent. Populated from a JSON source.
-type BotMetadata struct {
+type botMetadata struct {
 	Operator    *string `json:"operator"`
 	Respect     *string `json:"respect"`
 	Function    *string `json:"function"`
@@ -39,7 +39,7 @@ type BotMetadata struct {
 type BotUserAgent struct {
 	DisallowPath []string
 	AllowPath    []string
-	JSONMetadata BotMetadata
+	JSONMetadata botMetadata
 }
 
 // RobotsIndex is a hash of bot user agents and associated data with each.
@@ -57,6 +57,21 @@ type Source struct {
 	URL         string
 	response    *http.Response
 	contentType string
+}
+
+// GetIndex retrieves the content from a source URL, and returns a RobotsIndex of the content.
+func (s *Source) GetIndex() (RobotsIndex, error) {
+	i := make(RobotsIndex)
+	err := s.getContent()
+	if err != nil {
+		return i, err
+	}
+	defer func() { err = s.response.Body.Close() }()
+	if s.response.StatusCode != http.StatusOK {
+		return i, fmt.Errorf("error retrieving source data from '%s'. Status: %s", s.URL, s.response.Status)
+	}
+	i, err = s.getIndexFromContent()
+	return i, err
 }
 
 func (r *RobotsIndex) addTxtRule(e batchEntry) {
@@ -137,38 +152,6 @@ func (s *Source) getIndexFromContent() (RobotsIndex, error) {
 	return rIndex, err
 }
 
-func (s *Source) getIndex() (RobotsIndex, error) {
-	i := make(RobotsIndex)
-	err := s.getContent()
-	if err != nil {
-		return i, err
-	}
-	defer func() { err = s.response.Body.Close() }()
-	if s.response.StatusCode != http.StatusOK {
-		return i, fmt.Errorf("error retrieving source data from '%s'. Status: %s", s.URL, s.response.Status)
-	}
-	i, err = s.getIndexFromContent()
-	return i, err
-}
-
-// GetIndexFromSources manages retrieving robots source from slice of URLs, and parses it accordingly to a merged RobotsIndex.
-// TODO move this into botmanager..
-func GetIndexFromSources(l []Source) (RobotsIndex, error) {
-	i := make(RobotsIndex)
-	for _, s := range l {
-		n, err := s.getIndex()
-		if err != nil {
-			return i, err
-		}
-		// could use golang.org/x/exp/maps, but this saves us a dep
-		//nolint:modernize
-		for k, v := range n {
-			i[k] = v
-		}
-	}
-	return i, nil
-}
-
 func robotsTxtParse(r *bufio.Reader) RobotsIndex {
 	s := bufio.NewScanner(r)
 	rIndex := make(RobotsIndex)
@@ -231,7 +214,7 @@ func robotsPlaintextParse(r *bufio.Reader) RobotsIndex {
 	return rIndex
 }
 
-type jsonBotUserAgentIndex map[string]BotMetadata
+type jsonBotUserAgentIndex map[string]botMetadata
 
 // Validate checks that the json bot source has all required values.
 func (m *jsonBotUserAgentIndex) validate() error {

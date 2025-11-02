@@ -65,7 +65,7 @@ func New(_ context.Context, next http.Handler, c *config.Config, name string) (h
 		return nil, err
 	}
 
-	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log)
+	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch)
 	if err != nil {
 		log.Error("New: Unable to initialize bot user agent list manager. " + err.Error())
 		return nil, err
@@ -118,9 +118,14 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	// if its a normal request, see if they're on the bad robots list
-	uAInfo, uAInList := botUAIndex[uA]
+	botName, inList, err := w.botUAManager.Search(uA)
+	if err != nil {
+		w.log.Error("ServeHTTP: Unable to search cache. " + err.Error())
+		w.next.ServeHTTP(rw, req)
+		return
+	}
 	w.log.Debug("ServeHTTP: Got a request to evaluate", "userAgent", uA)
-	if !uAInList {
+	if !inList {
 		w.log.Debug("ServeHTTP: User agent not in block list, passing traffic", "userAgent", uA)
 		w.next.ServeHTTP(rw, req)
 		return
@@ -128,7 +133,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if w.botAction != config.BotActionPass {
 		uALogMsg := fmt.Sprintf("ServeHTTP: User agent '%s' considered AI Robot.", uA)
-		uAMetadata := uAInfo.JSONMetadata
+		uAMetadata := botUAIndex[botName].JSONMetadata
 		w.log.Info(uALogMsg, "userAgent", uA, "sourceIP", req.RemoteAddr, "requestedPath",
 			rPath, "remediationAction", w.botAction, "operator", uAMetadata.Operator, "respectsRobotsTxt",
 			uAMetadata.Respect, "function", uAMetadata.Function, "description", uAMetadata.Description,
