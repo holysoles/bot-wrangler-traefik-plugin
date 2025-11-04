@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/botmanager"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
-	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/proxy"
 )
 
@@ -28,7 +26,6 @@ type Wrangler struct {
 	botBlockHTTPResponse string
 	botUAManager         *botmanager.BotUAManager
 	log                  *logger.Log
-	template             *template.Template
 	proxy                *proxy.BotProxy
 }
 
@@ -48,24 +45,7 @@ func New(_ context.Context, next http.Handler, c *config.Config, name string) (h
 		return nil, err
 	}
 
-	t := template.New("tmp")
-	var loadedT *template.Template
-	switch {
-	case c.RobotsTXTDisallowAll:
-		log.Info("New: robotsTxtDisallowAll specified, robots.txt will disallow all user-agents")
-		loadedT, err = t.Parse(config.RobotsTxtDisallowAll)
-	case c.RobotsTXTFilePath == "":
-		loadedT, err = t.Parse(config.RobotsTxtDefault)
-	default:
-		log.Info("New: Custom robots.txt template file '" + c.RobotsTXTFilePath + "' specified, parsing..")
-		loadedT, err = t.ParseFiles(c.RobotsTXTFilePath)
-	}
-	if err != nil {
-		log.Error("New: Unable to load robots.txt template. " + err.Error())
-		return nil, err
-	}
-
-	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch)
+	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
 	if err != nil {
 		log.Error("New: Unable to initialize bot user agent list manager. " + err.Error())
 		return nil, err
@@ -86,7 +66,6 @@ func New(_ context.Context, next http.Handler, c *config.Config, name string) (h
 		botBlockHTTPCode:     c.BotBlockHTTPCode,
 		botBlockHTTPResponse: c.BotBlockHTTPResponse,
 		log:                  log,
-		template:             loadedT,
 		proxy:                bP,
 	}, nil
 }
@@ -99,21 +78,15 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	botUAIndex, err := w.botUAManager.GetBotIndex()
-	// this condition is unexpected. If the index source is permanently bad, we would've failed initialization, and if temporarily bad,
-	// we wouldn't update the index cache. Testing this would require unecessarily exposing the raw index, or using unsafe reflection
-	if err != nil || len(botUAIndex) == 0 {
-		w.log.Error("ServeHTTP: Unable to retrieve list of bot useragents. " + err.Error())
-		w.next.ServeHTTP(rw, req)
-		return
-	}
-
 	uA := req.Header.Get("User-Agent")
 	// if they are checking robots.txt, give them our list
 	rPath := req.URL.Path
 	if rPath == "/robots.txt" {
 		w.log.Debug("ServeHTTP: /robots.txt requested, rendering with live block list", "userAgent", uA)
-		w.renderRobotsTxt(botUAIndex, rw)
+		err := w.botUAManager.RenderRobotsTxt(rw)
+		if err != nil {
+			w.log.Error("ServeHTTP: Error rendering robots.txt template. " + err.Error())
+		}
 		return
 	}
 
@@ -134,7 +107,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if w.botAction != config.BotActionPass {
 		uALogMsg := fmt.Sprintf("ServeHTTP: User agent '%s' considered AI Robot.", uA)
-		uAMetadata := botUAIndex[botName].JSONMetadata
+		uAMetadata := w.botUAManager.GetInfo(botName).JSONMetadata
 		w.log.Info(uALogMsg, "userAgent", uA, "sourceIP", req.RemoteAddr, "requestedPath",
 			rPath, "remediationAction", w.botAction, "operator", uAMetadata.Operator, "respectsRobotsTxt",
 			uAMetadata.Respect, "function", uAMetadata.Function, "description", uAMetadata.Description,
@@ -142,22 +115,6 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 	// handle outcome of the request for the bot.
 	w.handleOutcome(rw, req)
-}
-
-// renderRobotsTxt renders and writes the current Robots Exclusion list into the request's response.
-func (w *Wrangler) renderRobotsTxt(bIndex parser.RobotsIndex, rw http.ResponseWriter) {
-	uAList := make([]string, len(bIndex))
-	i := 0
-	for k := range bIndex {
-		uAList[i] = k
-		i++
-	}
-	err := w.template.Execute(rw, map[string][]string{
-		"UserAgentList": uAList,
-	})
-	if err != nil {
-		w.log.Error("ServeHTTP: Error rendering robots.txt template. " + err.Error())
-	}
 }
 
 // handleOutcome applies the appropriate remediation actions to the request based on the config's BotAction.

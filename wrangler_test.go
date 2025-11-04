@@ -67,20 +67,6 @@ func TestWranglerInitBadConfig(t *testing.T) {
 	}
 }
 
-// TestWranglerInitBadRobotsTxt tests plugin behavior when the robots.txt template file cannot be found at startup
-func TestWranglerInitBadRobotsTxt(t *testing.T) {
-	cfg := CreateConfig()
-	cfg.RobotsTXTFilePath = "filenotexist.txt"
-
-	ctx := context.Background()
-	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
-
-	_, err := New(ctx, next, cfg, "wrangler")
-	if err == nil {
-		t.Error("New() did not return an error when provided invalid robots.txt file")
-	}
-}
-
 // TestWranglerInitBadBotProxyURL tests plugin behavior when the BotProxy URL provided is invalid
 func TestWranglerInitBadBotProxyURL(t *testing.T) {
 	cfg := CreateConfig()
