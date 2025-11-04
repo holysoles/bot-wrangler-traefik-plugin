@@ -3,9 +3,7 @@ package logger
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"regexp"
-	"strings"
 	"testing"
 )
 
@@ -14,10 +12,11 @@ var testLogOut bytes.Buffer //nolint:gochecknoglobals
 // TestNewLog tests that a logger can be initialized by the simpler New() function
 func TestNewLog(t *testing.T) {
 	log := New("DEBUG")
-	// modernize is incorrect that TypeFor should be used
-	//nolint:modernize
-	got := reflect.TypeOf(log).String()
-	if got != "*logger.Log" {
+	got := fmt.Sprintf("%T", log)
+	// yaegi docs indicate that type names may differ between compiled and interpreted modes
+	compiledType := "*logger.Log"
+	yaegiType := "*struct { Logger *slog.Logger }" //
+	if got != compiledType && got != yaegiType {
 		t.Error("Unexpected type returned from logger.New() constructor. Got: " + got)
 	}
 }
@@ -26,17 +25,48 @@ func TestNewLog(t *testing.T) {
 func TestLogLevel(t *testing.T) {
 	testLogOut.Reset()
 
-	methods := []string{"Debug", "Info", "Warn", "Error"}
-	for _, m := range methods {
-		lvl := strings.ToUpper(m)
+	lvl := "DEBUG"
+	t.Run(lvl, func(t *testing.T) {
 		log := NewFromWriter(lvl, &testLogOut)
 		msg := fmt.Sprintf("Test %s!", lvl)
 		want := regexp.MustCompile(fmt.Sprintf(".* level=%s.* msg=\"%s\" pluginName=bot-wrangler-traefik-plugin.*", lvl, msg))
-		reflect.ValueOf(log).MethodByName(m).Call([]reflect.Value{reflect.ValueOf(msg)})
 		log.Debug(msg)
 		got := testLogOut.String()
 		if !want.MatchString(got) {
-			t.Errorf("Log.%s() did not write the expected string as output! Wanted '%s', Got '%s'", m, want, got)
+			t.Errorf("Log.%s() did not write the expected string as output! Wanted '%s', Got '%s'", lvl, want, got)
 		}
-	}
+	})
+	lvl = "INFO"
+	t.Run(lvl, func(t *testing.T) {
+		log := NewFromWriter(lvl, &testLogOut)
+		msg := fmt.Sprintf("Test %s!", lvl)
+		want := regexp.MustCompile(fmt.Sprintf(".* level=%s.* msg=\"%s\" pluginName=bot-wrangler-traefik-plugin.*", lvl, msg))
+		log.Info(msg)
+		got := testLogOut.String()
+		if !want.MatchString(got) {
+			t.Errorf("Log.%s() did not write the expected string as output! Wanted '%s', Got '%s'", lvl, want, got)
+		}
+	})
+	lvl = "WARN"
+	t.Run(lvl, func(t *testing.T) {
+		log := NewFromWriter(lvl, &testLogOut)
+		msg := fmt.Sprintf("Test %s!", lvl)
+		want := regexp.MustCompile(fmt.Sprintf(".* level=%s.* msg=\"%s\" pluginName=bot-wrangler-traefik-plugin.*", lvl, msg))
+		log.Warn(msg)
+		got := testLogOut.String()
+		if !want.MatchString(got) {
+			t.Errorf("Log.%s() did not write the expected string as output! Wanted '%s', Got '%s'", lvl, want, got)
+		}
+	})
+	lvl = "ERROR"
+	t.Run(lvl, func(t *testing.T) {
+		log := NewFromWriter(lvl, &testLogOut)
+		msg := fmt.Sprintf("Test %s!", lvl)
+		want := regexp.MustCompile(fmt.Sprintf(".* level=%s.* msg=\"%s\" pluginName=bot-wrangler-traefik-plugin.*", lvl, msg))
+		log.Error(msg)
+		got := testLogOut.String()
+		if !want.MatchString(got) {
+			t.Errorf("Log.%s() did not write the expected string as output! Wanted '%s', Got '%s'", lvl, want, got)
+		}
+	})
 }

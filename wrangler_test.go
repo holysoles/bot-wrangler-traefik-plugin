@@ -503,6 +503,7 @@ func TestWranglerConcurrentRequests(t *testing.T) {
 	responses := make(chan *http.Response, requests)
 
 	// yaegi doesn't like a range over int loop here
+	// https://github.com/traefik/yaegi/issues/1701
 	for i := 0; i < requests; i++ { //nolint:intrange,modernize
 		wg.Add(1)
 		go func() {

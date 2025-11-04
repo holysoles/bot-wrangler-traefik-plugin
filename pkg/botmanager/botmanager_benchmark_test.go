@@ -24,26 +24,28 @@ func testGetIndex() parser.RobotsIndex {
 }
 
 func BenchmarkSimpleSearchShort(b *testing.B) {
-	for range b.N {
+	// yaegi doesn't like a range over int loop
+	// https://github.com/traefik/yaegi/issues/1701
+	for i := 0; i < b.N; i++ { //nolint:intrange,modernize
 		_ = bM.slowSearch(exampleShortString)
 	}
 }
 func BenchmarkSimpleSearchLong(b *testing.B) {
-	for range b.N {
+	for i := 0; i < b.N; i++ { //nolint:intrange,modernize
 		_ = bM.slowSearch(exampleLongString)
 	}
 }
 
 func BenchmarkAhoCorsasickSearchShort(b *testing.B) {
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
-	for range b.N {
+	for i := 0; i < b.N; i++ { //nolint:intrange,modernize
 		_ = bM.fastSearch(exampleShortString)
 	}
 }
 
 func BenchmarkAhoCorsasickSearchLong(b *testing.B) {
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
-	for range b.N {
+	for i := 0; i < b.N; i++ { //nolint:intrange,modernize
 		_ = bM.fastSearch(exampleLongString)
 	}
 }
