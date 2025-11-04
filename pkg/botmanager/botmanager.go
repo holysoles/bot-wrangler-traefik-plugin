@@ -105,26 +105,28 @@ func (b *BotUAManager) GetBotIndex() (parser.RobotsIndex, error) {
 }
 
 // Search checks if the provided user-agent has a (partial) match in the botIndex.
-func (b *BotUAManager) Search(u string) (string, bool, error) {
+func (b *BotUAManager) Search(u string) (string, error) {
 	var botName string
-	var found bool
 	if b.cache == nil {
-		return botName, found, errBotManagerNoInit
+		return botName, errBotManagerNoInit
 	}
-	botName, found = b.cache.get(u)
-	if !found {
+	botName, hit := b.cache.get(u)
+	if hit {
+		b.log.Debug("Search: cache hit, got '"+botName+"'", "userAgent", u)
+	} else {
+		b.log.Debug("Search: cache miss", "userAgent", u)
 		if b.searchFast {
-			botName, found = b.fastSearch(u)
+			botName = b.fastSearch(u)
 		} else {
-			botName, found = b.slowSearch(u)
+			botName = b.slowSearch(u)
 		}
 		b.cache.set(u, botName)
 	}
-	return botName, found, nil
+	return botName, nil
 }
 
 // slowSearch runs a substring search in a simple for loop.
-func (b *BotUAManager) slowSearch(u string) (string, bool) {
+func (b *BotUAManager) slowSearch(u string) string {
 	var match bool
 	var nameMatch string
 	for name := range b.botIndex {
@@ -134,12 +136,13 @@ func (b *BotUAManager) slowSearch(u string) (string, bool) {
 			break
 		}
 	}
-	return nameMatch, match
+	return nameMatch
 }
 
 // fastSearch runs a match search using a Aho-Corasick automaton.
-func (b *BotUAManager) fastSearch(u string) (string, bool) {
-	return b.ahoCorasick.Search(u)
+func (b *BotUAManager) fastSearch(u string) string {
+	s, _ := b.ahoCorasick.Search(u)
+	return s
 }
 
 // update fetches the latest robots.txt index from each configured source, merges them, stores it, and updates the timestamp.

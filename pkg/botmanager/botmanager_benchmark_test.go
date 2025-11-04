@@ -25,25 +25,25 @@ func testGetIndex() parser.RobotsIndex {
 
 func BenchmarkSimpleSearchShort(b *testing.B) {
 	for range b.N {
-		_, _ = bM.slowSearch(exampleShortString)
+		_ = bM.slowSearch(exampleShortString)
 	}
 }
 func BenchmarkSimpleSearchLong(b *testing.B) {
 	for range b.N {
-		_, _ = bM.slowSearch(exampleLongString)
+		_ = bM.slowSearch(exampleLongString)
 	}
 }
 
 func BenchmarkAhoCorsasickSearchShort(b *testing.B) {
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
 	for range b.N {
-		_, _ = bM.fastSearch(exampleShortString)
+		_ = bM.fastSearch(exampleShortString)
 	}
 }
 
 func BenchmarkAhoCorsasickSearchLong(b *testing.B) {
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
 	for range b.N {
-		_, _ = bM.fastSearch(exampleLongString)
+		_ = bM.fastSearch(exampleLongString)
 	}
 }

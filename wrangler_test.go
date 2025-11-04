@@ -187,12 +187,9 @@ func TestWranglerInitBadRobotsIndex(t *testing.T) {
 	}
 }
 
-// getWranglerResponse is a helper function to setup a context, plugin, responsewriter, etc to generate a response. UserAgent, Botaction, and request URL can be specified
-func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable bool, disallowAll bool) *http.Response {
+// getWrangler is a helper function to initialize a Wrangler instance
+func getWrangler(t *testing.T, bA string, disable bool, disallowAll bool) *Wrangler {
 	t.Helper()
-	if url == "" {
-		url = "http://localhost"
-	}
 	cfg := CreateConfig()
 	if bA != "" {
 		cfg.BotAction = bA
@@ -217,6 +214,18 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 	}
 	w.log = logger.NewFromWriter(config.LogLevelInfo, &testLogOut)
 
+	return w
+}
+
+// getWranglerResponse is a helper function to setup a context, plugin, responsewriter, etc to generate a response. UserAgent, Botaction, and request URL can be specified
+func getWranglerResponse(t *testing.T, w *Wrangler, url string, uA string) *http.Response {
+	t.Helper()
+	if url == "" {
+		url = "http://localhost"
+	}
+
+	ctx := context.Background()
+
 	recorder := httptest.NewRecorder()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -226,14 +235,15 @@ func getWranglerResponse(t *testing.T, uA string, bA string, url string, disable
 	if uA != "" {
 		req.Header.Set("User-Agent", uA)
 	}
-	h.ServeHTTP(recorder, req)
+	w.ServeHTTP(recorder, req)
 	res := recorder.Result()
 	return res
 }
 
 // TestWranglerDisabled tests that the plugin simply returns and exits early
 func TestWranglerDisabled(t *testing.T) {
-	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", false, false)
+	w := getWrangler(t, "", false, false)
+	res := getWranglerResponse(t, w, "http://localhost/robots.txt", "")
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("robots.txt page returned non-200 unexpectedly. Got: %d", res.StatusCode)
 	}
@@ -247,7 +257,8 @@ func TestWranglerDisabled(t *testing.T) {
 
 // TestWranglerRobotsTxt tests that the plugin renders a valid robots.txt exclusions file when requested
 func TestWranglerRobotsTxt(t *testing.T) {
-	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", true, false)
+	w := getWrangler(t, "", true, false)
+	res := getWranglerResponse(t, w, "http://localhost/robots.txt", "")
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("disabled plugin request returned non-200 unexpectedly. Got: %d", res.StatusCode)
 	}
@@ -255,7 +266,8 @@ func TestWranglerRobotsTxt(t *testing.T) {
 
 // TestWranglerRobotsTxtDisallowAll tests that the plugin renders a robots.txt with all user-agents disallowed when the config flag is specified
 func TestWranglerRobotsTxtDisallowAll(t *testing.T) {
-	res := getWranglerResponse(t, "", "", "http://localhost/robots.txt", false, true)
+	w := getWrangler(t, "", false, true)
+	res := getWranglerResponse(t, w, "http://localhost/robots.txt", "")
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("robots.txt page returned non-200 unexpectedly. Got: %d", res.StatusCode)
 	}
@@ -297,7 +309,8 @@ func TestWranglerPassActions(t *testing.T) {
 	}
 
 	for _, s := range passScenarios {
-		res := getWranglerResponse(t, s.userAgent, s.botAction, "", false, false)
+		w := getWrangler(t, s.botAction, false, false)
+		res := getWranglerResponse(t, w, "", s.userAgent)
 		resBody, _ := io.ReadAll(res.Body)
 		resUnmodified := res.StatusCode == http.StatusOK && len(res.Header) == 0 && len(resBody) == 0
 		if !resUnmodified {
@@ -315,7 +328,8 @@ func TestWranglerBlockAction(t *testing.T) {
 	var blockedBody jsonBody
 	ua := BotUserAgent
 	action := config.BotActionBlock
-	res := getWranglerResponse(t, ua, action, "", false, false)
+	w := getWrangler(t, action, false, false)
+	res := getWranglerResponse(t, w, "", ua)
 	resBody, _ := io.ReadAll(res.Body)
 	err := json.Unmarshal(resBody, &blockedBody)
 	if err != nil {
@@ -332,6 +346,45 @@ func TestWranglerBlockAction(t *testing.T) {
 	got := testLogOut.String()
 	if !wantLog.MatchString(got) {
 		t.Error("blocked bot request did not log expected info. Got: " + got)
+	}
+}
+
+// TestWranglerCacheActions tests that plugin behavior is consistent before and after caching the user-agent.
+func TestWranglerCacheActions(t *testing.T) {
+	type scenario struct {
+		userAgent string
+		outcome   int
+	}
+	action := "BLOCK"
+	passScenarios := []scenario{
+		{
+			userAgent: RealUserAgent,
+			outcome:   http.StatusOK,
+		},
+		{
+			userAgent: RealUserAgent,
+			outcome:   http.StatusOK,
+		},
+		{
+			userAgent: BotUserAgent,
+			outcome:   http.StatusForbidden,
+		},
+		{
+			userAgent: BotUserAgent,
+			outcome:   http.StatusForbidden,
+		},
+	}
+
+	w := getWrangler(t, action, false, false)
+	for _, s := range passScenarios {
+		t.Run(s.userAgent, func(t *testing.T) {
+			res := getWranglerResponse(t, w, "", s.userAgent)
+			got := res.StatusCode
+			want := got == s.outcome
+			if !want {
+				t.Errorf("plugin response did not return expected status %d, got %d", s.outcome, got)
+			}
+		})
 	}
 }
 
