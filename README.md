@@ -2,6 +2,7 @@
 
 ![GitHub License](https://img.shields.io/github/license/holysoles/bot-wrangler-traefik-plugin)
 [![codecov](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin/graph/badge.svg?token=1GCKDQSR7R)](https://codecov.io/gh/holysoles/bot-wrangler-traefik-plugin)
+[![Go Report Card](https://goreportcard.com/badge/github.com/holysoles/bot-wrangler-traefik-plugin)](https://goreportcard.com/report/github.com/holysoles/bot-wrangler-traefik-plugin)
 ![Issues](https://img.shields.io/github/issues/holysoles/bot-wrangler-traefik-plugin)
 
 Bot Wrangler is a Traefik plugin designed to improve your web application's security and performance by managing bot traffic effectively. With the rise of large language model (LLM) data scrapers, it has become crucial to control automated traffic from bots. Bot Wrangler provides a solution to log, block, or otherwise handle traffic from unwanted LLM bots, ensuring that your resources are protected and your content remains accessible only to those desired.
