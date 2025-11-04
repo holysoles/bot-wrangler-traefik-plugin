@@ -28,11 +28,11 @@ const (
 
 // BotMetadata holds metadata about a bot's user agent. Populated from a JSON source.
 type botMetadata struct {
-	Operator    *string `json:"operator"`
-	Respect     *string `json:"respect"`
-	Function    *string `json:"function"`
-	Frequency   *string `json:"frequency"`
-	Description *string `json:"description"`
+	Operator    string `json:"operator"`
+	Respect     string `json:"respect"`
+	Function    string `json:"function"`
+	Frequency   string `json:"frequency"`
+	Description string `json:"description"`
 }
 
 // BotUserAgent holds the fields associated with a bot's user agent.
@@ -222,7 +222,7 @@ func (m *jsonBotUserAgentIndex) validate() error {
 		r := reflect.ValueOf(bInfo)
 		// it'd be better to range over r.NumField(), but yaegi is panicking when loading the plugin when we use that
 		for i, fN := range []string{"Operator", "Respect", "Function", "Frequency", "Description"} {
-			if r.Field(i).IsNil() {
+			if r.Field(i).String() == "" {
 				return fmt.Errorf("missing required field '%s' on retrieved bot index entry", fN)
 			}
 		}
