@@ -34,7 +34,8 @@ services:
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botBlockHttpCode=403"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.loglevel=DEBUG"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.cacheUpdateInterval=1m"
-      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botProxyUrl=http://backend:80"
+      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.robotsSourceUrl=https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"
+      #- "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botProxyUrl=http://backend:80"
 
   backend:
     image: traefik/whoami

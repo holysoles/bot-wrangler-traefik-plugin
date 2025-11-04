@@ -13,7 +13,6 @@ import (
 	"testing"
 )
 
-func getPtr(s string) *string { return &s }
 func sliceMatch(a []string, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -31,7 +30,9 @@ func indexMatchSource(r RobotsIndex, s map[string]botMetadata) bool {
 		if !ok {
 			return false
 		}
-		if v.JSONMetadata == getV {
+		vJSON := v.JSONMetadata
+		match := vJSON.Description == getV.Description && vJSON.Frequency == getV.Frequency && vJSON.Function == getV.Function && vJSON.Operator == getV.Operator && vJSON.Respect == getV.Respect
+		if !match {
 			return false
 		}
 	}
@@ -84,15 +85,15 @@ var (
 		},
 	}
 	sourceRobotsMetadata = botMetadata{
-		Operator:    getPtr("MyBot.lan"),
-		Respect:     getPtr("Yes"),
-		Function:    getPtr("golang unit tests"),
-		Frequency:   getPtr("n/a"),
-		Description: getPtr("used for this package's unit tests"),
+		Operator:    "MyBot.lan",
+		Respect:     "Yes",
+		Function:    "golang unit tests",
+		Frequency:   "n/a",
+		Description: "used for this package's unit tests",
 	}
 	sourceRobotsJSON        = map[string]botMetadata{"MyBot": sourceRobotsMetadata}
 	sourceRobotsMetadataBad = botMetadata{
-		Operator: getPtr("MyBot.lan"),
+		Operator: "MyBot.lan",
 	}
 	sourceRobotsJSONBad = map[string]botMetadata{"MyBadBot": sourceRobotsMetadataBad}
 )
