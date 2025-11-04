@@ -4,6 +4,8 @@ export GO111MODULE=on
 
 default: lint test race
 
+ci: lint test
+
 lint:
 	golangci-lint run
 
