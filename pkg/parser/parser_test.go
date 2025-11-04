@@ -125,7 +125,7 @@ func (e *errorReader) Read(_ []byte) (int, error) {
 
 // TestRobotsJSONParse tests that an error is raised if the bufio.Reader cannot be read from
 func TestRobotsJSONParseClosedReader(t *testing.T) {
-	var r *errorReader
+	r := &errorReader{}
 	bR := bufio.NewReader(r)
 	_, err := robotsJSONParse(bR)
 	if err == nil {

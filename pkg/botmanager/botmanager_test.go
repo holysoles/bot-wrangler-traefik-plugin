@@ -2,7 +2,6 @@ package botmanager
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 	"time"
 
@@ -159,10 +158,7 @@ func TestBotIndexSearchCacheRollover(t *testing.T) {
 	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, 1, c.UseFastMatch)
 
 	bM.cache.set(exampleLongString, "")
-	fmt.Printf("DEBUG: before %d\n", len(bM.cache.data))
-
 	bM.cache.set(exampleShortString, "")
-	fmt.Printf("DEBUG: after %d\n", len(bM.cache.data))
 	_, ok := bM.cache.get(exampleLongString)
 
 	if ok {
