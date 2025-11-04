@@ -9,22 +9,21 @@ on:
   schedule:
     - cron: "00 04 * * *" # nightly at 04:00
 
-jobs:
+env:
+      GO_VERSION: 1.23
+      CGO_ENABLED: 0
 
-  main:
-    name: Main Process
+jobs:
+  lint:
+    name: Go Lint
     runs-on: ubuntu-latest
     env:
-      GO_VERSION: 1.23
       GOLANGCI_LINT_VERSION: v2.5.0
-      YAEGI_VERSION: v0.16.1
-      CGO_ENABLED: 0
     defaults:
       run:
         working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
 
     steps:
-
       # https://github.com/marketplace/actions/setup-go-environment
       - name: Set up Go ${{ env.GO_VERSION }}
         uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
@@ -38,7 +37,44 @@ jobs:
           path: go/src/github.com/${{ github.repository }}
           fetch-depth: 0
 
-      # https://github.com/marketplace/actions/cache
+      # https://golangci-lint.run/usage/install#other-ci
+      - name: Install golangci-lint ${{ env.GOLANGCI_LINT_VERSION }}
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${GOLANGCI_LINT_VERSION}
+
+      - name: Setup GOPATH
+        run: go env -w GOPATH=${{ github.workspace }}/go
+
+      - name: gofmt
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            gofmt -s -d .
+            exit 1
+          fi
+
+      - name: Golangci-lint
+        run: make lint
+
+  test:
+    name: Go Tests
+    runs-on: ubuntu-latest
+    env:
+      YAEGI_VERSION: v0.16.1
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}/go/src/github.com/${{ github.repository }}
+
+    steps:
+      - name: Set up Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check out code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
+        with:
+          path: go/src/github.com/${{ github.repository }}
+          fetch-depth: 0
+
       - name: Cache Go modules
         uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # v3
         with:
@@ -46,10 +82,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
-      # https://golangci-lint.run/usage/install#other-ci
-      - name: Install golangci-lint ${{ env.GOLANGCI_LINT_VERSION }}
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${GOLANGCI_LINT_VERSION}
 
       - name: Install Yaegi ${{ env.YAEGI_VERSION }}
         run: curl -sfL https://raw.githubusercontent.com/traefik/yaegi/master/install.sh | bash -s -- -b $(go env GOPATH)/bin ${YAEGI_VERSION}
@@ -66,15 +98,8 @@ jobs:
           go mod vendor
           # git diff --exit-code ./vendor/
 
-      - name: gofmt
-        run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            gofmt -s -d .
-            exit 1
-          fi
-
-      - name: Lint and Tests
-        run: make ci
+      - name: Run tests native Go
+        run: make test
 
       - name: Test Race
         run: CGO_ENABLED=1 make race
