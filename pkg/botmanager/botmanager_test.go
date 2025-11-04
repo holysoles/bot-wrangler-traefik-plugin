@@ -135,7 +135,7 @@ func TestBotIndexSearchCache(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch)
-	botName, _, err := bM.Search(exampleLongString)
+	botName, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a search for '%s': %s", exampleLongString, err.Error())
 	}
@@ -143,7 +143,7 @@ func TestBotIndexSearchCache(t *testing.T) {
 	newName := "foobar"
 	bM.cache.set(exampleLongString, newName)
 
-	updatedName, _, err := bM.Search(exampleLongString)
+	updatedName, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a search for '%s': %s", exampleLongString, err.Error())
 	}
@@ -175,11 +175,11 @@ func TestBotIndexSearchSlow(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, false)
-	_, match, err := bM.Search(exampleLongString)
+	botName, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a slow search for '%s': %s", exampleLongString, err.Error())
 	}
-	if !match {
+	if botName == "" {
 		t.Errorf("slow search method did not return a match for '%s'", exampleLongString)
 	}
 }
@@ -190,12 +190,12 @@ func TestBotIndexSearchFast(t *testing.T) {
 	c := config.New()
 	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch)
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
-	_, match, err := bM.Search(exampleLongString)
+	botName, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a fast search for '%s': %s", exampleLongString, err.Error())
 	}
-	if !match {
-		t.Errorf("fast search method did not return a match for '%s'", exampleLongString)
+	if botName == "" {
+		t.Errorf("slow search method did not return a match for '%s'", exampleLongString)
 	}
 }
 
@@ -203,7 +203,7 @@ func TestBotIndexSearchFast(t *testing.T) {
 func TestBotIndexSearchNoInit(t *testing.T) {
 	bM := BotUAManager{}
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
-	_, _, err := bM.Search(exampleLongString)
+	_, err := bM.Search(exampleLongString)
 	if err == nil {
 		t.Error("expected an error when performing a search without first initializing the BotManager")
 	}
