@@ -22,7 +22,19 @@ test_codecov:
 	cat codecov.yml | curl --data-binary @- https://codecov.io/validate
 
 yaegi_test:
-	yaegi test -v .
+	yaegi test -v .; \
+	root=$$(pwd); \
+	dirs=$$(find ./pkg -name "*.go" -printf "%h\n" | uniq);\
+	for dir in $$dirs; do \
+		echo "testing $$dir"; \
+		cd "$$dir"; \
+		yaegi test -v .; \
+        	if [ $$? != 0 ] ; then \
+			echo "Yaegi test failed!"; \
+			exit 1; \
+		fi; \
+		cd "$$root"; \
+	done
 
 vendor:
 	go mod vendor
