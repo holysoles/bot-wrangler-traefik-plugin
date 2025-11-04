@@ -4,6 +4,7 @@ package botmanager
 import (
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/ahocorasick"
@@ -20,6 +21,7 @@ type userAgentCache struct {
 	data   map[string]string
 	keys   []*string
 	limit  int
+	lock   sync.RWMutex
 }
 
 func newUserAgentCache(s int) *userAgentCache {
@@ -31,11 +33,15 @@ func newUserAgentCache(s int) *userAgentCache {
 }
 
 func (c *userAgentCache) get(k string) (string, bool) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	v, ok := c.data[k]
 	return v, ok
 }
 
 func (c *userAgentCache) set(k string, v string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	// rollover
 	if c.cursor >= c.limit {
 		c.cursor = 0
