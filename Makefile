@@ -1,14 +1,17 @@
-.PHONY: lint test bench vendor clean
+.PHONY: lint test race bench vendor clean
 
 export GO111MODULE=on
 
-default: lint test
+default: lint test race
 
 lint:
 	golangci-lint run
 
 test:
 	go test -v -cover -coverprofile=coverage.out ./...
+
+race:
+	go test -race ./...
 
 bench:
 	go test -bench=. ./...

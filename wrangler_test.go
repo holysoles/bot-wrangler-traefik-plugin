@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"sync"
 	"testing"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
@@ -473,5 +474,66 @@ func TestWranglerProxyActionNoInit(t *testing.T) {
 	want := res.StatusCode == http.StatusForbidden && res.Header.Get("Content-Type") == "application/json" && blockedBody.Error == "Forbidden" && blockedBody.Message == "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"
 	if !want {
 		t.Errorf("request from bot that should've been proxied and failed did not return a blocked fallback response")
+	}
+}
+
+func TestWranglerConcurrentRequests(t *testing.T) {
+	// Create a test server
+	ctx := context.Background()
+	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {})
+	cfg := CreateConfig()
+	cfg.BotAction = config.BotActionBlock
+	cfg.CacheSize = 1
+	h, err := New(ctx, next, cfg, "wrangler")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, ok := h.(*Wrangler)
+	if !ok {
+		t.Error("unable to assert handler as type Wrangler")
+	}
+	w.log = logger.NewFromWriter(config.LogLevelDebug, &testLogOut)
+
+	server := httptest.NewServer(h)
+	defer server.Close()
+
+	var wg sync.WaitGroup
+	requests := 50 // Number of concurrent requests
+	responses := make(chan *http.Response, requests)
+
+	// yaegi doesn't like a range over int loop here
+	for i := 0; i < requests; i++ { //nolint:intrange,modernize
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+			if i%2 == 0 {
+				req.Header.Set("User-Agent", RealUserAgent)
+			} else {
+				req.Header.Set("User-Agent", BotUserAgent)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			responses <- resp
+		}()
+	}
+
+	wg.Wait()
+	close(responses)
+
+	for resp := range responses {
+		want := http.StatusOK
+		uaType := "regular"
+		if resp.Request.Header.Get("User-Agent") == BotUserAgent {
+			want = http.StatusForbidden
+			uaType = "bot"
+		}
+		if resp.StatusCode != want {
+			t.Errorf("Expected status %d for %s user-agent, got %d", want, uaType, resp.StatusCode)
+		}
 	}
 }
