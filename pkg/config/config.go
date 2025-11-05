@@ -45,35 +45,37 @@ Disallow: /
 
 // Config the plugin configuration.
 type Config struct {
-	Enabled              string `json:"enabled,omitempty"`
-	BotAction            string `json:"botAction,omitempty"`
-	BotBlockHTTPCode     int    `json:"botBlockHttpCode,omitempty"`
-	BotBlockHTTPResponse string `json:"botBlockHttpResponse,omitempty"`
-	BotProxyURL          string `json:"botProxyUrl,omitempty"`
-	CacheSize            int    `json:"cacheSize,omitempty"`
-	CacheUpdateInterval  string `json:"cacheUpdateInterval,omitempty"`
-	LogLevel             string `json:"logLevel,omitempty"`
-	RobotsTXTFilePath    string `json:"robotsTxtFilePath,omitempty"`
-	RobotsTXTDisallowAll bool   `json:"robotsTxtDisallowAll,omitempty"`
-	RobotsSourceURL      string `json:"robotsSourceUrl,omitempty"`
-	UseFastMatch         bool   `json:"useFastMatch,omitempty"`
+	Enabled                   string `json:"enabled,omitempty"`
+	BotAction                 string `json:"botAction,omitempty"`
+	BotBlockHTTPCode          int    `json:"botBlockHttpCode,omitempty"`
+	BotBlockHTTPResponse      string `json:"botBlockHttpResponse,omitempty"`
+	BotProxyURL               string `json:"botProxyUrl,omitempty"`
+	CacheSize                 int    `json:"cacheSize,omitempty"`
+	CacheUpdateInterval       string `json:"cacheUpdateInterval,omitempty"`
+	LogLevel                  string `json:"logLevel,omitempty"`
+	RobotsTXTFilePath         string `json:"robotsTxtFilePath,omitempty"`
+	RobotsTXTDisallowAll      bool   `json:"robotsTxtDisallowAll,omitempty"`
+	RobotsSourceURL           string `json:"robotsSourceUrl,omitempty"`
+	RobotsSourceRetryInterval string `json:"robotsSourceRetryInterval,omitempty"`
+	UseFastMatch              bool   `json:"useFastMatch,omitempty"`
 }
 
 // New creates the default plugin configuration.
 func New() *Config {
 	return &Config{
-		Enabled:              "true",
-		BotAction:            "LOG",
-		BotBlockHTTPCode:     http.StatusForbidden,
-		BotBlockHTTPResponse: "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource",
-		BotProxyURL:          "",
-		CacheSize:            defaultMaxCacheSize,
-		CacheUpdateInterval:  "24h",
-		LogLevel:             "INFO",
-		RobotsTXTFilePath:    "",
-		RobotsTXTDisallowAll: false,
-		RobotsSourceURL:      "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@v1.42/robots.json",
-		UseFastMatch:         true,
+		Enabled:                   "true",
+		BotAction:                 "LOG",
+		BotBlockHTTPCode:          http.StatusForbidden,
+		BotBlockHTTPResponse:      "Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource",
+		BotProxyURL:               "",
+		CacheSize:                 defaultMaxCacheSize,
+		CacheUpdateInterval:       "24h",
+		LogLevel:                  "INFO",
+		RobotsTXTFilePath:         "",
+		RobotsTXTDisallowAll:      false,
+		RobotsSourceURL:           "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@v1.42/robots.json",
+		RobotsSourceRetryInterval: "5m",
+		UseFastMatch:              true,
 	}
 }
 
@@ -121,6 +123,11 @@ func (c *Config) ValidateConfig() error {
 	}
 	// UseFastMatch
 	// no validation since boolean
+	// RobotsSourceRetryInterval
+	_, err = time.ParseDuration(c.RobotsSourceRetryInterval)
+	if err != nil {
+		return fmt.Errorf("ValidateConfig: RobotsSourceRetryInterval must be a time duration string. Got '%s'", c.RobotsSourceRetryInterval)
+	}
 
 	return nil
 }

@@ -2,6 +2,7 @@
 package botmanager
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"strings"
@@ -72,6 +73,7 @@ type BotUAManager struct {
 	searchFast          bool
 	sources             []parser.Source
 	template            *template.Template
+	templateCache       *bytes.Buffer
 }
 
 func loadTemplate(disallowAll bool, templatePath string, log *logger.Log) (*template.Template, error) {
@@ -114,6 +116,7 @@ func New(source string, i string, l *logger.Log, cS int, sF bool, disallowAll bo
 		sources:             sources,
 		searchFast:          sF,
 		template:            t,
+		templateCache:       &bytes.Buffer{},
 	}
 	err = uAMan.update()
 	return &uAMan, err
@@ -121,19 +124,11 @@ func New(source string, i string, l *logger.Log, cS int, sF bool, disallowAll bo
 
 // RenderRobotsTxt renders and writes the current Robots Exclusion list into the request's response.
 func (b *BotUAManager) RenderRobotsTxt(w io.Writer) error {
-	var err error
-	// TODO err check
-	// TODO
-	bIndex, _ := b.getBotIndex()
-	uAList := make([]string, len(bIndex))
-	i := 0
-	for k := range bIndex {
-		uAList[i] = k
-		i++
+	err := b.refreshBotIndex()
+	if err != nil {
+		return err
 	}
-	err = b.template.Execute(w, map[string][]string{
-		"UserAgentList": uAList,
-	})
+	_, err = io.Copy(w, b.templateCache)
 	return err
 }
 
@@ -150,8 +145,10 @@ func (b *BotUAManager) Search(u string) (string, error) {
 		return botName, errBotManagerNoInit
 	}
 
-	// TODO cleanup
-	_, _ = b.getBotIndex()
+	err := b.refreshBotIndex()
+	if err != nil {
+		return botName, err
+	}
 
 	botName, hit := b.cache.get(u)
 	if hit {
@@ -169,7 +166,7 @@ func (b *BotUAManager) Search(u string) (string, error) {
 }
 
 // getBotIndex retrieves the current, merged robots.txt index. It will refreshed the cached copy if necessary.
-func (b *BotUAManager) getBotIndex() (parser.RobotsIndex, error) {
+func (b *BotUAManager) refreshBotIndex() error {
 	var err error
 
 	b.log.Debug("GetBotIndex: sources last updated at " + b.lastUpdate.Format(time.RFC1123))
@@ -182,7 +179,7 @@ func (b *BotUAManager) getBotIndex() (parser.RobotsIndex, error) {
 		b.log.Debug("GetBotIndex: cache has not expired. Next update due " + nextUpdate.Format(time.RFC1123))
 	}
 
-	return b.botIndex, err
+	return err
 }
 
 // slowSearch runs a substring search in a simple for loop.
@@ -224,6 +221,21 @@ func (b *BotUAManager) update() error {
 		b.ahoCorasick = ahocorasick.NewFromIndex(b.botIndex)
 	}
 	b.cache = newUserAgentCache(b.cache.limit)
+
+	uAList := make([]string, len(b.botIndex))
+	i := 0
+	for k := range b.botIndex {
+		uAList[i] = k
+		i++
+	}
+	b.templateCache.Reset()
+	err := b.template.Execute(b.templateCache, map[string][]string{
+		"UserAgentList": uAList,
+	})
+	if err != nil {
+		return err
+	}
+
 	b.lastUpdate = time.Now()
 	return nil
 }
