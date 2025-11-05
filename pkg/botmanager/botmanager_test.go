@@ -20,12 +20,12 @@ func TestNewBotManager(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	tStart := time.Now()
 	c := config.New()
-	b, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	b, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err != nil {
 		t.Error("unexpected error when initializing default bot manager: " + err.Error())
 	}
-	if tStart.Compare(b.lastUpdate) >= 0 {
-		t.Error("BotUAManager's lastUpdate property was not updated as expected")
+	if tStart.Compare(b.nextUpdate) >= 0 {
+		t.Error("BotUAManager's nextUpdate property was not updated as expected")
 	}
 	if len(b.botIndex) == 0 {
 		t.Error("robots.txt index was not successfully retrieved")
@@ -38,19 +38,19 @@ func TestBotManagerBadURL(t *testing.T) {
 	c := config.New()
 
 	c.RobotsSourceURL = "%%"
-	_, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	_, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err == nil {
 		t.Error("Malformed RobotsSourceURL did not return an error when initializing BotUAManager")
 	}
 
 	c.RobotsSourceURL = "https://somerandomhost.example.com"
-	_, err = New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	_, err = New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err == nil {
 		t.Error("Unreachable RobotsSourceURL did not return an error when initializing BotUAManager")
 	}
 
 	c.RobotsSourceURL = "https://httpbin.io/json"
-	_, err = New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	_, err = New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err == nil {
 		t.Error("RobotsSourceURL that returns invalid data did not return an error when initializing BotUAManager")
 	}
@@ -60,7 +60,7 @@ func TestBotManagerBadURL(t *testing.T) {
 func TestGetBotIndex(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
-	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	err := b.refreshBotIndex()
 	if err != nil {
 		t.Error("Unable to get robots index with default configuration. " + err.Error())
@@ -83,7 +83,7 @@ func TestGetBotIndexMulti(t *testing.T) {
 	c := config.New()
 	u := "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@latest/robots.json" + "," + "https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"
 
-	b, _ := New(u, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	b, _ := New(u, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	err := b.refreshBotIndex()
 	if err != nil {
 		t.Error("Unable to get robots index with default configuration. " + err.Error())
@@ -101,12 +101,12 @@ func TestBotIndexCacheRefresh(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	c.CacheUpdateInterval = "5ns"
-	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	_ = b.refreshBotIndex()
-	firstUpdate := b.lastUpdate
+	firstUpdate := b.nextUpdate
 	time.Sleep(b.cacheUpdateInterval)
 	_ = b.refreshBotIndex()
-	secondUpdate := b.lastUpdate
+	secondUpdate := b.nextUpdate
 	if secondUpdate.Compare(firstUpdate) != 1 {
 		t.Error("BotUAManager cache refresh did not occur during GetBotIndex() call when expired")
 	}
@@ -117,13 +117,16 @@ func TestBotIndexBadUpdate(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	c.CacheUpdateInterval = "5ns"
-	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	_ = b.refreshBotIndex()
-	firstUpdate := b.lastUpdate
+	firstIndex := &b.botIndex
+
 	b.sources = []parser.Source{{URL: "https://httpbin.org/json"}}
 	time.Sleep(b.cacheUpdateInterval)
 	err := b.refreshBotIndex()
-	if b.lastUpdate != firstUpdate {
+	secondIndex := &b.botIndex
+
+	if firstIndex != secondIndex {
 		t.Error("BotUAManager updated the cache with invalid values during a refresh")
 	}
 	if err == nil {
@@ -135,7 +138,7 @@ func TestBotIndexBadUpdate(t *testing.T) {
 func TestBotIndexSearchCache(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
-	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	botName, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a search for '%s': %s", exampleLongString, err.Error())
@@ -158,7 +161,7 @@ func TestBotIndexSearchCacheRollover(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	c.CacheSize = 1
-	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 
 	bM.cache.set(exampleLongString, "")
 	bM.cache.set(exampleShortString, "")
@@ -174,7 +177,7 @@ func TestBotIndexSearchSlow(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	c.UseFastMatch = false
-	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	botName, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a slow search for '%s': %s", exampleLongString, err.Error())
@@ -188,7 +191,7 @@ func TestBotIndexSearchSlow(t *testing.T) {
 func TestBotIndexSearchFast(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
-	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
 	botName, err := bM.Search(exampleLongString)
 	if err != nil {
@@ -214,7 +217,7 @@ func TestInitBadRobotsTxt(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	c.RobotsTXTFilePath = "filenotexist.txt"
-	_, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	_, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err == nil {
 		t.Error("New() did not return an error when provided invalid robots.txt file")
 	}
@@ -233,7 +236,7 @@ func (f *badResponseWriter) Write(_ []byte) (int, error) {
 func TestInitBadRobotsTemplate(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
-	b, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	b, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err != nil {
 		t.Fatal("unexpected error constructing botmanager instance")
 	}
@@ -247,3 +250,7 @@ func TestInitBadRobotsTemplate(t *testing.T) {
 }
 
 // TODO check for template cache behavior
+// test that values are cached (modify cache after it initializes
+// test that the buffer is cleared when its refreshed again
+
+// TODO test robotssourceretryinterval

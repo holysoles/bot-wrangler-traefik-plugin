@@ -68,10 +68,11 @@ type BotUAManager struct {
 	botIndex            parser.RobotsIndex
 	cache               *userAgentCache
 	cacheUpdateInterval time.Duration
-	lastUpdate          time.Time
+	nextUpdate          time.Time
 	log                 *logger.Log
 	searchFast          bool
 	sources             []parser.Source
+	sourceRetryInterval time.Duration
 	template            *template.Template
 	templateCache       *bytes.Buffer
 }
@@ -94,9 +95,10 @@ func loadTemplate(disallowAll bool, templatePath string, log *logger.Log) (*temp
 }
 
 // New initializes a BotUAManager instance.
-func New(source string, i string, l *logger.Log, cS int, sF bool, disallowAll bool, templatePath string) (*BotUAManager, error) {
-	// we validated the time duration earlier, so ignore any error now
-	iDur, _ := time.ParseDuration(i)
+func New(source string, cacheInt string, l *logger.Log, cS int, sF bool, disallowAll bool, templatePath string, srcInt string) (*BotUAManager, error) {
+	// we validated the time durations earlier, so ignore any error now
+	iDur, _ := time.ParseDuration(cacheInt)
+	sDur, _ := time.ParseDuration(srcInt)
 	uL := strings.Split(source, ",")
 	sources := make([]parser.Source, len(uL))
 	for i, u := range uL {
@@ -114,11 +116,12 @@ func New(source string, i string, l *logger.Log, cS int, sF bool, disallowAll bo
 		cacheUpdateInterval: iDur,
 		log:                 l,
 		sources:             sources,
+		sourceRetryInterval: sDur,
 		searchFast:          sF,
 		template:            t,
 		templateCache:       &bytes.Buffer{},
 	}
-	err = uAMan.update()
+	err = uAMan.refreshBotIndex()
 	return &uAMan, err
 }
 
@@ -169,14 +172,18 @@ func (b *BotUAManager) Search(u string) (string, error) {
 func (b *BotUAManager) refreshBotIndex() error {
 	var err error
 
-	b.log.Debug("GetBotIndex: sources last updated at " + b.lastUpdate.Format(time.RFC1123))
-
-	nextUpdate := b.lastUpdate.Add(b.cacheUpdateInterval)
-	if time.Now().Compare(nextUpdate) >= 0 {
-		b.log.Info("GetBotIndex: cache expired, updating")
+	if time.Now().Compare(b.nextUpdate) >= 0 {
+		b.log.Info("refreshBotIndex: cache expired, updating")
 		err = b.update()
+		if err != nil {
+			b.log.Warn("refreshBotIndex: cache failed to refresh, will retry after " + b.nextUpdate.Format(time.RFC1123))
+			b.nextUpdate = time.Now().Add(b.sourceRetryInterval)
+		} else {
+			b.log.Debug("refreshBotIndex: cache refreshed, next update due " + b.nextUpdate.Format(time.RFC1123))
+			b.nextUpdate = time.Now().Add(b.cacheUpdateInterval)
+		}
 	} else {
-		b.log.Debug("GetBotIndex: cache has not expired. Next update due " + nextUpdate.Format(time.RFC1123))
+		b.log.Debug("refreshBotIndex: cache has not expired. Next update due " + b.nextUpdate.Format(time.RFC1123))
 	}
 
 	return err
@@ -236,6 +243,5 @@ func (b *BotUAManager) update() error {
 		return err
 	}
 
-	b.lastUpdate = time.Now()
 	return nil
 }

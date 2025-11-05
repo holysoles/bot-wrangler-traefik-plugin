@@ -45,7 +45,7 @@ func New(_ context.Context, next http.Handler, c *config.Config, name string) (h
 		return nil, err
 	}
 
-	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
+	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err != nil {
 		log.Error("New: Unable to initialize bot user agent list manager. " + err.Error())
 		return nil, err
@@ -82,7 +82,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// if they are checking robots.txt, give them our list
 	rPath := req.URL.Path
 	if rPath == "/robots.txt" {
-		w.log.Debug("ServeHTTP: /robots.txt requested, rendering with live block list", "userAgent", uA)
+		w.log.Debug("ServeHTTP: /robots.txt requested, rendering with active block list", "userAgent", uA)
 		err := w.botUAManager.RenderRobotsTxt(rw)
 		if err != nil {
 			w.log.Error("ServeHTTP: Error rendering robots.txt template. " + err.Error())
