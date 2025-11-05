@@ -108,3 +108,13 @@ func TestConfigBadCacheSize(t *testing.T) {
 		t.Error("ValidateConfig didn't fail an invalid CacheSize.")
 	}
 }
+
+// TestConfigBadSourceRetryInterval overrides a default config with an invalid RobotsSourceRetryInterval and checks that an error is raised by ValidateConfig().
+func TestConfigBadSourceRetryInterval(t *testing.T) {
+	c := New()
+	c.RobotsSourceRetryInterval = "something time.ParseDuration can't parse"
+	err := c.ValidateConfig()
+	if err == nil {
+		t.Error("ValidateConfig didn't fail an invalid RobotsSourceRetryInterval.")
+	}
+}
