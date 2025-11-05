@@ -32,27 +32,35 @@ func TestNewBotManager(t *testing.T) {
 	}
 }
 
+// TestNewBotManager calls botmanager.New() with the RobotsTXTDisallowAll config value set to true
+func TestNewBotManagerDisallowAll(t *testing.T) {
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
+	c := config.New()
+	c.RobotsTXTDisallowAll = true
+	_, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
+	if err != nil {
+		t.Error("unexpected error when initializing bot manager with RobotsTXTDisallowAll: " + err.Error())
+	}
+}
+
 // TestBotManagerBadURL tests exceptions inside BotUAManager.update() are properly handled and returned. Also validates that custom RobotsSourceURL config is respected.
 func TestBotManagerBadURL(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 
-	c.RobotsSourceURL = "%%"
-	_, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
-	if err == nil {
-		t.Error("Malformed RobotsSourceURL did not return an error when initializing BotUAManager")
+	urls := []string{
+		"%%",                                 // unparsable
+		"https://somerandomhost.example.com", // dns failure
+		"https://httpbin.io/json",            // malformed data
 	}
 
-	c.RobotsSourceURL = "https://somerandomhost.example.com"
-	_, err = New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
-	if err == nil {
-		t.Error("Unreachable RobotsSourceURL did not return an error when initializing BotUAManager")
-	}
-
-	c.RobotsSourceURL = "https://httpbin.io/json"
-	_, err = New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
-	if err == nil {
-		t.Error("RobotsSourceURL that returns invalid data did not return an error when initializing BotUAManager")
+	for _, u := range urls {
+		t.Run(u, func(t *testing.T) {
+			_, err := New(u, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
+			if err == nil {
+				t.Error("problematic RobotsSourceURL did not return an error when initializing BotUAManager")
+			}
+		})
 	}
 }
 
@@ -248,6 +256,8 @@ func TestInitBadRobotsTemplate(t *testing.T) {
 		t.Error("RenderRobotsTxt() did not return an error when provided bad writer to write template content into")
 	}
 }
+
+// TODO test getinfo
 
 // TODO check for template cache behavior
 // test that values are cached (modify cache after it initializes
