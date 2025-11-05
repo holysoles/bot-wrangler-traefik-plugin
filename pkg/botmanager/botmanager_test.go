@@ -61,17 +61,17 @@ func TestGetBotIndex(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
-	botI, err := b.getBotIndex()
+	err := b.refreshBotIndex()
 	if err != nil {
 		t.Error("Unable to get robots index with default configuration. " + err.Error())
 	}
-	if len(botI) == 0 {
+	if len(b.botIndex) == 0 {
 		t.Error("robots index with default configuration was empty")
 	}
 
 	// test retrieving a bot from the index
 	want := "GPTBot"
-	_, bInList := botI[want]
+	_, bInList := b.botIndex[want]
 	if !bInList {
 		t.Errorf("retrieved default robots index does not contain %s", want)
 	}
@@ -84,11 +84,11 @@ func TestGetBotIndexMulti(t *testing.T) {
 	u := "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@latest/robots.json" + "," + "https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"
 
 	b, _ := New(u, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
-	botI, err := b.getBotIndex()
+	err := b.refreshBotIndex()
 	if err != nil {
 		t.Error("Unable to get robots index with default configuration. " + err.Error())
 	}
-	gotL := len(botI)
+	gotL := len(b.botIndex)
 	// approximate ai robots json at > 100 entries, bad bots at 50+
 	getL := 100 + 50
 	if gotL < getL {
@@ -102,10 +102,10 @@ func TestBotIndexCacheRefresh(t *testing.T) {
 	c := config.New()
 	c.CacheUpdateInterval = "5ns"
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
-	_, _ = b.getBotIndex()
+	_ = b.refreshBotIndex()
 	firstUpdate := b.lastUpdate
 	time.Sleep(b.cacheUpdateInterval)
-	_, _ = b.getBotIndex()
+	_ = b.refreshBotIndex()
 	secondUpdate := b.lastUpdate
 	if secondUpdate.Compare(firstUpdate) != 1 {
 		t.Error("BotUAManager cache refresh did not occur during GetBotIndex() call when expired")
@@ -118,11 +118,11 @@ func TestBotIndexBadUpdate(t *testing.T) {
 	c := config.New()
 	c.CacheUpdateInterval = "5ns"
 	b, _ := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath)
-	_, _ = b.getBotIndex()
+	_ = b.refreshBotIndex()
 	firstUpdate := b.lastUpdate
 	b.sources = []parser.Source{{URL: "https://httpbin.org/json"}}
 	time.Sleep(b.cacheUpdateInterval)
-	_, err := b.getBotIndex()
+	err := b.refreshBotIndex()
 	if b.lastUpdate != firstUpdate {
 		t.Error("BotUAManager updated the cache with invalid values during a refresh")
 	}
@@ -245,3 +245,5 @@ func TestInitBadRobotsTemplate(t *testing.T) {
 		t.Error("RenderRobotsTxt() did not return an error when provided bad writer to write template content into")
 	}
 }
+
+// TODO check for template cache behavior
