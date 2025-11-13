@@ -147,7 +147,7 @@ func TestBotIndexSearchCache(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
 	c := config.New()
 	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
-	botName, err := bM.Search(exampleLongString)
+	botName, _, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a search for '%s': %s", exampleLongString, err.Error())
 	}
@@ -155,7 +155,7 @@ func TestBotIndexSearchCache(t *testing.T) {
 	newName := "foobar"
 	bM.cache.set(exampleLongString, newName)
 
-	updatedName, err := bM.Search(exampleLongString)
+	updatedName, _, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a search for '%s': %s", exampleLongString, err.Error())
 	}
@@ -186,7 +186,7 @@ func TestBotIndexSearchSlow(t *testing.T) {
 	c := config.New()
 	c.UseFastMatch = false
 	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
-	botName, err := bM.Search(exampleLongString)
+	botName, _, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a slow search for '%s': %s", exampleLongString, err.Error())
 	}
@@ -201,7 +201,7 @@ func TestBotIndexSearchFast(t *testing.T) {
 	c := config.New()
 	bM, _ := New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
-	botName, err := bM.Search(exampleLongString)
+	botName, _, err := bM.Search(exampleLongString)
 	if err != nil {
 		t.Errorf("unexpected error when performing a fast search for '%s': %s", exampleLongString, err.Error())
 	}
@@ -214,7 +214,7 @@ func TestBotIndexSearchFast(t *testing.T) {
 func TestBotIndexSearchNoInit(t *testing.T) {
 	bM := BotUAManager{}
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
-	_, err := bM.Search(exampleLongString)
+	_, _, err := bM.Search(exampleLongString)
 	if err == nil {
 		t.Error("expected an error when performing a search without first initializing the BotManager")
 	}
@@ -256,8 +256,6 @@ func TestInitBadRobotsTemplate(t *testing.T) {
 		t.Error("RenderRobotsTxt() did not return an error when provided bad writer to write template content into")
 	}
 }
-
-// TODO test getinfo
 
 // TODO check for template cache behavior
 // test that values are cached (modify cache after it initializes

@@ -135,22 +135,17 @@ func (b *BotUAManager) RenderRobotsTxt(w io.Writer) error {
 	return err
 }
 
-// GetInfo retrieves the metadata associated with a specific botName from the Bot Index.
-func (b *BotUAManager) GetInfo(botName string) parser.BotUserAgent {
-	// TODO i think this change is not thread safe
-	return b.botIndex[botName]
-}
-
 // Search checks if the provided user-agent has a (partial) match in the botIndex.
-func (b *BotUAManager) Search(u string) (string, error) {
+func (b *BotUAManager) Search(u string) (string, parser.BotUserAgent, error) {
 	var botName string
+	var botInfo parser.BotUserAgent
 	if b.cache == nil {
-		return botName, errBotManagerNoInit
+		return botName, botInfo, errBotManagerNoInit
 	}
 
 	err := b.refreshBotIndex()
 	if err != nil {
-		return botName, err
+		return botName, botInfo, err
 	}
 
 	botName, hit := b.cache.get(u)
@@ -165,7 +160,7 @@ func (b *BotUAManager) Search(u string) (string, error) {
 		}
 		b.cache.set(u, botName)
 	}
-	return botName, nil
+	return botName, b.botIndex[botName], nil
 }
 
 // getBotIndex retrieves the current, merged robots.txt index. It will refreshed the cached copy if necessary.
