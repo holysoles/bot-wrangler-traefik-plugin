@@ -92,7 +92,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	// if its a normal request, see if they're on the bad robots list
 	w.log.Debug("ServeHTTP: Got a request to evaluate", "userAgent", uA)
-	botName, err := w.botUAManager.Search(uA)
+	botName, botInfo, err := w.botUAManager.Search(uA)
 	if err != nil {
 		w.log.Error("ServeHTTP: Unable to search cache. " + err.Error())
 		w.next.ServeHTTP(rw, req)
@@ -107,7 +107,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 	if w.botAction != config.BotActionPass {
 		uALogMsg := fmt.Sprintf("ServeHTTP: User agent '%s' considered AI Robot.", uA)
-		uAMetadata := w.botUAManager.GetInfo(botName).JSONMetadata
+		uAMetadata := botInfo.JSONMetadata
 		w.log.Info(uALogMsg, "userAgent", uA, "sourceIP", req.RemoteAddr, "requestedPath",
 			rPath, "remediationAction", w.botAction, "operator", uAMetadata.Operator, "respectsRobotsTxt",
 			uAMetadata.Respect, "function", uAMetadata.Function, "description", uAMetadata.Description,
