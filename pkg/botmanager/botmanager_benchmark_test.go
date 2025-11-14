@@ -1,10 +1,12 @@
 package botmanager
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/ahocorasick"
-	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/config"
+	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/logger"
 )
 
 const (
@@ -14,14 +16,10 @@ const (
 )
 
 var (
-	bM = BotUAManager{botIndex: testGetIndex()}
+	log   = logger.NewFromWriter("ERROR", &testLogOut)
+	c     = config.New()
+	bM, _ = New(exampleSource, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 )
-
-func testGetIndex() parser.RobotsIndex {
-	u := parser.Source{URL: exampleSource}
-	r, _ := u.GetIndex()
-	return r
-}
 
 func BenchmarkSimpleSearchShort(b *testing.B) {
 	// yaegi doesn't like a range over int loop
@@ -47,5 +45,18 @@ func BenchmarkAhoCorsasickSearchLong(b *testing.B) {
 	bM.ahoCorasick = ahocorasick.NewFromIndex(bM.botIndex)
 	for i := 0; i < b.N; i++ { //nolint:intrange,modernize
 		_ = bM.fastSearch(exampleLongString)
+	}
+}
+
+func BenchmarkRobotsTxtRenderCache(b *testing.B) {
+	for i := 0; i < b.N; i++ { //nolint:intrange,modernize
+		w := &bytes.Buffer{}
+		_ = bM.RenderRobotsTxt(w, true)
+	}
+}
+func BenchmarkRobotsTxtRenderNoCache(b *testing.B) {
+	for i := 0; i < b.N; i++ { //nolint:intrange,modernize
+		w := &bytes.Buffer{}
+		_ = bM.RenderRobotsTxt(w, false)
 	}
 }

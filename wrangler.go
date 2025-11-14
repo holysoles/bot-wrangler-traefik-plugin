@@ -83,7 +83,7 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	rPath := req.URL.Path
 	if rPath == "/robots.txt" {
 		w.log.Debug("ServeHTTP: /robots.txt requested, rendering with active block list", "userAgent", uA)
-		err := w.botUAManager.RenderRobotsTxt(rw)
+		err := w.botUAManager.RenderRobotsTxt(rw, true)
 		if err != nil {
 			w.log.Error("ServeHTTP: Error rendering robots.txt template. " + err.Error())
 		}
