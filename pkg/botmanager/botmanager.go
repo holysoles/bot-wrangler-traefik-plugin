@@ -126,12 +126,28 @@ func New(source string, cacheInt string, l *logger.Log, cS int, sF bool, disallo
 }
 
 // RenderRobotsTxt renders and writes the current Robots Exclusion list into the request's response.
-func (b *BotUAManager) RenderRobotsTxt(w io.Writer) error {
+func (b *BotUAManager) RenderRobotsTxt(w io.Writer, useCache bool) error {
 	err := b.refreshBotIndex()
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(w, b.templateCache)
+	if !useCache {
+		uAList := make([]string, len(b.botIndex))
+		i := 0
+		for k := range b.botIndex {
+			uAList[i] = k
+			i++
+		}
+		err = b.template.Execute(w, map[string][]string{
+			"UserAgentList": uAList,
+		})
+	} else {
+		cacheCopy := &bytes.Buffer{}
+		tee := io.TeeReader(b.templateCache, cacheCopy)
+		_, err = io.Copy(w, tee)
+		b.templateCache = cacheCopy
+	}
+
 	return err
 }
 
@@ -166,12 +182,11 @@ func (b *BotUAManager) Search(u string) (string, parser.BotUserAgent, error) {
 // getBotIndex retrieves the current, merged robots.txt index. It will refreshed the cached copy if necessary.
 func (b *BotUAManager) refreshBotIndex() error {
 	var err error
-
 	if time.Now().Compare(b.nextUpdate) >= 0 {
 		b.log.Info("refreshBotIndex: cache expired, updating")
 		err = b.update()
 		if err != nil {
-			b.log.Warn("refreshBotIndex: cache failed to refresh, will retry after " + b.nextUpdate.Format(time.RFC1123))
+			b.log.Warn("refreshBotIndex: cache failed to refresh, will retry after " + b.nextUpdate.Format(time.RFC1123) + ". Error: " + err.Error())
 			b.nextUpdate = time.Now().Add(b.sourceRetryInterval)
 		} else {
 			b.log.Debug("refreshBotIndex: cache refreshed, next update due " + b.nextUpdate.Format(time.RFC1123))
@@ -181,6 +196,9 @@ func (b *BotUAManager) refreshBotIndex() error {
 		b.log.Debug("refreshBotIndex: cache has not expired. Next update due " + b.nextUpdate.Format(time.RFC1123))
 	}
 
+	if len(b.botIndex) == 0 {
+		b.log.Warn("refreshBotIndex: bot index is empty, review source data")
+	}
 	return err
 }
 
@@ -234,9 +252,6 @@ func (b *BotUAManager) update() error {
 	err := b.template.Execute(b.templateCache, map[string][]string{
 		"UserAgentList": uAList,
 	})
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
