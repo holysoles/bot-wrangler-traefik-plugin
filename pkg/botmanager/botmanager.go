@@ -69,6 +69,7 @@ type BotUAManager struct {
 	cache               *userAgentCache
 	cacheUpdateInterval time.Duration
 	nextUpdate          time.Time
+	lock                sync.Mutex
 	log                 *logger.Log
 	searchFast          bool
 	sources             []parser.Source
@@ -182,6 +183,8 @@ func (b *BotUAManager) Search(u string) (string, parser.BotUserAgent, error) {
 // getBotIndex retrieves the current, merged robots.txt index. It will refreshed the cached copy if necessary.
 func (b *BotUAManager) refreshBotIndex() error {
 	var err error
+
+	b.lock.Lock()
 	if time.Now().Compare(b.nextUpdate) >= 0 {
 		b.log.Info("refreshBotIndex: cache expired, updating")
 		err = b.update()
@@ -199,6 +202,8 @@ func (b *BotUAManager) refreshBotIndex() error {
 	if len(b.botIndex) == 0 {
 		b.log.Warn("refreshBotIndex: bot index is empty, review source data")
 	}
+
+	b.lock.Unlock()
 	return err
 }
 
