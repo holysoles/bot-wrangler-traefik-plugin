@@ -185,6 +185,7 @@ func (b *BotUAManager) refreshBotIndex() error {
 	var err error
 
 	b.lock.Lock()
+	defer b.lock.Unlock()
 	if time.Now().Compare(b.nextUpdate) >= 0 {
 		b.log.Info("refreshBotIndex: cache expired, updating")
 		err = b.update()
@@ -203,7 +204,6 @@ func (b *BotUAManager) refreshBotIndex() error {
 		b.log.Warn("refreshBotIndex: bot index is empty, review source data")
 	}
 
-	b.lock.Unlock()
 	return err
 }
 
