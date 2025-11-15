@@ -2,8 +2,6 @@
 package ahocorasick
 
 import (
-	"fmt"
-
 	"github.com/holysoles/bot-wrangler-traefik-plugin/pkg/parser"
 )
 
@@ -58,7 +56,6 @@ func NewFromIndex(m parser.RobotsIndex) *Node {
 func (a *Node) Search(s string) (string, bool) {
 	curr := a
 	match := false
-	fmt.Print()
 	for _, l := range s {
 		n, ok := curr.next[l]
 		if ok {
