@@ -27,6 +27,7 @@ type Wrangler struct {
 	botUAManager         *botmanager.BotUAManager
 	log                  *logger.Log
 	proxy                *proxy.BotProxy
+	setNoArchiveHeader   bool
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -66,6 +67,7 @@ func New(_ context.Context, next http.Handler, c *config.Config, name string) (h
 		botBlockHTTPCode:     c.BotBlockHTTPCode,
 		botBlockHTTPResponse: c.BotBlockHTTPResponse,
 		log:                  log,
+		setNoArchiveHeader:   c.SetNoArchiveHeader,
 		proxy:                bP,
 	}, nil
 }
@@ -113,6 +115,12 @@ func (w *Wrangler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 			uAMetadata.Respect, "function", uAMetadata.Function, "description", uAMetadata.Description,
 		)
 	}
+
+	// if specified, set the X-Robots-Tag header
+	if w.setNoArchiveHeader {
+		rw.Header().Add("X-Robots-Tag", "noarchive")
+	}
+
 	// handle outcome of the request for the bot.
 	w.handleOutcome(rw, req)
 }
