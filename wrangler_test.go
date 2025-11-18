@@ -269,40 +269,49 @@ func TestWranglerRobotsTxtDisallowAll(t *testing.T) {
 // TestWranglerPassActions tests scenarios where a request (with User-Agent provided) is expected to pass
 func TestWranglerPassActions(t *testing.T) {
 	type scenario struct {
-		userAgent string
-		botAction string
+		userAgent         string
+		botAction         string
+		expectHeaderCount int
 	}
 	passScenarios := []scenario{
 		{
-			userAgent: RealUserAgent,
-			botAction: "PASS",
+			userAgent:         RealUserAgent,
+			botAction:         "PASS",
+			expectHeaderCount: 0,
 		},
 		{
-			userAgent: RealUserAgent,
-			botAction: "LOG",
+			userAgent:         RealUserAgent,
+			botAction:         "LOG",
+			expectHeaderCount: 0,
 		},
 		{
-			userAgent: RealUserAgent,
-			botAction: "BLOCK",
+			userAgent:         RealUserAgent,
+			botAction:         "BLOCK",
+			expectHeaderCount: 0,
 		},
 		{
-			userAgent: BotUserAgent,
-			botAction: "PASS",
+			userAgent:         BotUserAgent,
+			botAction:         "PASS",
+			expectHeaderCount: 1,
 		},
 		{
-			userAgent: BotUserAgent,
-			botAction: "LOG",
+			userAgent:         BotUserAgent,
+			botAction:         "LOG",
+			expectHeaderCount: 1,
 		},
 	}
 
 	for _, s := range passScenarios {
-		w := getWrangler(t, s.botAction, false, false)
-		res := getWranglerResponse(t, w, "", s.userAgent)
-		resBody, _ := io.ReadAll(res.Body)
-		resUnmodified := res.StatusCode == http.StatusOK && len(res.Header) == 0 && len(resBody) == 0
-		if !resUnmodified {
-			t.Errorf("request passed to plugin with BotAction '%s' from User-Agent '%s' had response unexpectedly modified", s.botAction, s.userAgent)
-		}
+		scenarioName := fmt.Sprintf("BotAction:%s,UA:%s", s.botAction, s.userAgent)
+		t.Run(scenarioName, func(t *testing.T) {
+			w := getWrangler(t, s.botAction, false, false)
+			res := getWranglerResponse(t, w, "", s.userAgent)
+			resBody, _ := io.ReadAll(res.Body)
+			resUnmodified := res.StatusCode == http.StatusOK && len(res.Header) == s.expectHeaderCount && len(resBody) == 0
+			if !resUnmodified {
+				t.Errorf("request passed to plugin had response unexpectedly modified")
+			}
+		})
 	}
 }
 
@@ -522,5 +531,38 @@ func TestWranglerConcurrentRequests(t *testing.T) {
 		if resp.StatusCode != want {
 			t.Errorf("Expected status %d for %s user-agent, got %d", want, uaType, resp.StatusCode)
 		}
+	}
+}
+
+// TestWranglerNoArchiveEnabled tests that the X-Robots-Tag is appropriately set/unset based on configuration and user-agent
+func TestWranglerNoArchive(t *testing.T) {
+	w := getWrangler(t, "", false, false)
+	type scenario struct {
+		ua            string
+		headerEnabled bool
+		expectHeader  bool
+	}
+	scenarios := []scenario{
+		{ua: RealUserAgent, headerEnabled: true, expectHeader: false},
+		{ua: BotUserAgent, headerEnabled: true, expectHeader: true},
+		{ua: RealUserAgent, headerEnabled: false, expectHeader: false},
+		{ua: BotUserAgent, headerEnabled: false, expectHeader: false},
+	}
+
+	for _, s := range scenarios {
+		scenarioName := fmt.Sprintf("SetHeader:%v,UA:%s", s.headerEnabled, s.ua)
+		t.Run(scenarioName, func(t *testing.T) {
+			w.setNoArchiveHeader = s.headerEnabled
+			res := getWranglerResponse(t, w, "http://localhost/", s.ua)
+
+			headerVal := res.Header.Get("X-Robots-Tag")
+			got := headerVal != ""
+			if s.expectHeader != got {
+				t.Errorf("expected presence of 'X-Robots-Tag' header to be %v, but got %v", s.expectHeader, got)
+			}
+			if got && headerVal != "noarchive" {
+				t.Errorf("expected value of 'X-Robots-Tag' header to be 'noarchive', but got '%s'", headerVal)
+			}
+		})
 	}
 }

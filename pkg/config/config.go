@@ -53,6 +53,7 @@ type Config struct {
 	CacheSize                 int    `json:"cacheSize,omitempty"`
 	CacheUpdateInterval       string `json:"cacheUpdateInterval,omitempty"`
 	LogLevel                  string `json:"logLevel,omitempty"`
+	SetNoArchiveHeader        bool   `json:"setNoArchiveHeader,omitempty"`
 	RobotsTXTFilePath         string `json:"robotsTxtFilePath,omitempty"`
 	RobotsTXTDisallowAll      bool   `json:"robotsTxtDisallowAll,omitempty"`
 	RobotsSourceURL           string `json:"robotsSourceUrl,omitempty"`
@@ -71,6 +72,7 @@ func New() *Config {
 		CacheSize:                 defaultMaxCacheSize,
 		CacheUpdateInterval:       "24h",
 		LogLevel:                  "INFO",
+		SetNoArchiveHeader:        true,
 		RobotsTXTFilePath:         "",
 		RobotsTXTDisallowAll:      false,
 		RobotsSourceURL:           "https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@v1.42/robots.json",

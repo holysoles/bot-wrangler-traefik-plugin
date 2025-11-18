@@ -69,6 +69,7 @@ The follow parameters are exposed to configure this plugin
 |robotsTxtDisallowAll|`false`|A config option to generate a robots.txt file that will disallow all user-agents. This does not change the blocking behavior of the middleware.|
 |robotsSourceUrl|`https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json`|A comma separated list of URLs to retrieve a bot list. You can provide your own, but read the notes below!|
 |robotsSourceRetryInterval|`5m`|If retrieving data from a source fails, how frequently to retry|
+|setNoArchiveHeader|`true`|Set the `X-Robots-Tag` header to `noarchive` in responses to detected bot traffic. Used by [Bing](https://www.bing.com/webmasters/help/which-robots-metatags-does-bing-support-5198d240) and [Amazon](developer.amazon.com/en/amazonbot), possibly others.|
 |useFastMatch|`true`|When `true`, use an Aho-Corasick automaton for speedily matching uncached User-Agents against Bot Names. Consumes more memory. `false` relies on a slower, simple substring match.|
 
 ### Providing Custom Robots Sources
