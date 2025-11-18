@@ -68,9 +68,9 @@ type BotUAManager struct {
 	botIndex            parser.RobotsIndex
 	cache               *userAgentCache
 	cacheUpdateInterval time.Duration
-	nextUpdate          time.Time
 	lock                sync.Mutex
 	log                 *logger.Log
+	nextUpdate          time.Time
 	searchFast          bool
 	sources             []parser.Source
 	sourceRetryInterval time.Duration
@@ -116,6 +116,7 @@ func New(source string, cacheInt string, l *logger.Log, cS int, sF bool, disallo
 		cache:               newUserAgentCache(cS),
 		cacheUpdateInterval: iDur,
 		log:                 l,
+		nextUpdate:          time.Now(),
 		sources:             sources,
 		sourceRetryInterval: sDur,
 		searchFast:          sF,
@@ -190,11 +191,11 @@ func (b *BotUAManager) refreshBotIndex() error {
 		b.log.Info("refreshBotIndex: cache expired, updating")
 		err = b.update()
 		if err != nil {
-			b.log.Warn("refreshBotIndex: cache failed to refresh, will retry after " + b.nextUpdate.Format(time.RFC1123) + ". Error: " + err.Error())
 			b.nextUpdate = time.Now().Add(b.sourceRetryInterval)
+			b.log.Warn("refreshBotIndex: cache failed to refresh, will retry after " + b.nextUpdate.Format(time.RFC1123) + ". Error: " + err.Error())
 		} else {
-			b.log.Debug("refreshBotIndex: cache refreshed, next update due " + b.nextUpdate.Format(time.RFC1123))
 			b.nextUpdate = time.Now().Add(b.cacheUpdateInterval)
+			b.log.Debug("refreshBotIndex: cache refreshed, next update due " + b.nextUpdate.Format(time.RFC1123))
 		}
 	} else {
 		b.log.Debug("refreshBotIndex: cache has not expired. Next update due " + b.nextUpdate.Format(time.RFC1123))
