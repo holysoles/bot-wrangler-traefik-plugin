@@ -317,6 +317,25 @@ func TestInitBadRobotsTemplate(t *testing.T) {
 	}
 }
 
+// TestRenderRobotsTxtCustomTemplate tests that when a custom robots.txt template is provided, the plugin properly renders a robots.txt to clients
+func TestRenderRobotsTxtCustomTemplate(t *testing.T) {
+	log := logger.NewFromWriter("DEBUG", &testLogOut)
+	c := config.New()
+	// use example template in root
+	c.RobotsTXTFilePath = "../../robots.txt"
+	b, err := New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
+	if err != nil {
+		t.Error("Initializing the botmanager with a custom RobotsTXTFilePath failed: " + err.Error())
+	}
+
+	w := &badResponseWriter{}
+	err = b.RenderRobotsTxt(w, true)
+
+	if err != nil {
+		t.Error("RenderRobotsTxt() with a custom template was not successful: " + err.Error())
+	}
+}
+
 // TestRenderRobotsTxtBadRefresh tests that an error is returned when an error is encountered refreshing bot sources when rending the robots.txt template
 func TestRenderRobotsTxtBadRefresh(t *testing.T) {
 	log := logger.NewFromWriter("DEBUG", &testLogOut)
