@@ -328,7 +328,7 @@ func TestRenderRobotsTxtCustomTemplate(t *testing.T) {
 		t.Error("Initializing the botmanager with a custom RobotsTXTFilePath failed: " + err.Error())
 	}
 
-	w := &badResponseWriter{}
+	w := &bytes.Buffer{}
 	err = b.RenderRobotsTxt(w, true)
 
 	if err != nil {

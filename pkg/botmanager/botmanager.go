@@ -79,7 +79,7 @@ type BotUAManager struct {
 }
 
 func loadTemplate(disallowAll bool, templatePath string, log *logger.Log) (*template.Template, error) {
-	t := template.New("tmp")
+	t := template.New("robots.txt")
 	var loadedT *template.Template
 	var err error
 	switch {
