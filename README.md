@@ -65,7 +65,7 @@ The follow parameters are exposed to configure this plugin
 |cacheUpdateInterval|`24h`|How frequently sources should be refreshed for new bots. Also flushes the User-Agent cache.|
 |cacheSize|`500`|The maximum size of the cache of User-Agent to Bot Name mappings. Rolls over when full.|
 |logLevel|`INFO`|The log level for the plugin|
-|robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. If one is not provided, a default will be generated based on the user agents from your `robotsSourceUrl`. See the `robots.txt` in the repo|
+|robotsTxtFilePath|`""`| The file path to a custom robots.txt Golang template file. This **must** end in `/robots.txt`. If omitted, a default will be generated based on the user agents from your `robotsSourceUrl`. [See example here](/robots.txt).|
 |robotsTxtDisallowAll|`false`|A config option to generate a robots.txt file that will disallow all user-agents. This does not change the blocking behavior of the middleware.|
 |robotsSourceUrl|`https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt/robots.json`|A comma separated list of URLs to retrieve a bot list. You can provide your own, but read the notes below!|
 |robotsSourceRetryInterval|`5m`|If retrieving data from a source fails, how frequently to retry|
