@@ -4,7 +4,7 @@ iconPath: .assets/icon.png
 
 import: github.com/holysoles/bot-wrangler-traefik-plugin
 
-summary: Middleware Plugin that helps you wrangle those pesky LLM data scrapers.
+summary: A plugin to helps manage and enforce your robots.txt against bots
 
 testData:
   LogLevel: "INFO"
