@@ -61,7 +61,7 @@ The follow parameters are exposed to configure this plugin
 |botAction|`LOG`|How the bot should be wrangled. Available: `PASS` (do nothing), `LOG` (log bot info), `BLOCK` (log and return static error response), `PROXY` (log and proxy to `botProxyUrl`)|
 |botProxyUrl|`""`|The URL to pass a bot's request to, if `PROXY` is the set `botAction`|
 |botBlockHttpCode|`403`|The HTTP response code that should be returned when a `BLOCK` action is taken|
-|botBlockHttpContent|`"Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"`|The value of the 'message' key in the JSON response when a `BLOCK` action is taken. If an empty string, the response body has no content.|
+|botBlockHttpResponse|`"Your user agent is associated with a large language model (LLM) and is blocked from accessing this resource"`|The value of the 'message' key in the JSON response when a `BLOCK` action is taken. If an empty string, the response body has no content.|
 |cacheUpdateInterval|`24h`|How frequently sources should be refreshed for new bots. Also flushes the User-Agent cache.|
 |cacheSize|`500`|The maximum size of the cache of User-Agent to Bot Name mappings. Rolls over when full.|
 |logLevel|`INFO`|The log level for the plugin|
