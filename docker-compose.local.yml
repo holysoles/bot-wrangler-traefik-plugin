@@ -29,7 +29,7 @@ services:
       - "traefik.http.services.service-bar.loadbalancer.server.port=80"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botaction=BLOCK"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.botBlockHttpCode=403"
-      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.loglevel=DEBUG"
+      - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.logLevel=DEBUG"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.cacheUpdateInterval=1m"
       - "traefik.http.middlewares.bot-wrangler.plugin.wrangler.robotsSourceUrl=https://cdn.jsdelivr.net/gh/ai-robots-txt/ai.robots.txt@v1.42/robots.json,https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"
       #- "traefik.http.middlewares.bot-wrangler.plugin.wrangler.robotsSourceUrl=https://cdn.jsdelivr.net/gh/mitchellkrogza/nginx-ultimate-bad-bot-blocker@latest/robots.txt/robots.txt"
