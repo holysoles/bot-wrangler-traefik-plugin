@@ -38,17 +38,18 @@ func CreateConfig() *config.Config {
 // New creates a new plugin instance.
 func New(_ context.Context, next http.Handler, c *config.Config, name string) (http.Handler, error) {
 	log := logger.New(c.LogLevel)
+	log.Debug("wrangler.New: Initializing new plugin instance")
 	c.BotAction = strings.ToUpper(c.BotAction)
 
 	err := c.ValidateConfig()
 	if err != nil {
-		log.Error("New: unable to load configuration properly. " + err.Error())
+		log.Error("wrangler.New: unable to load configuration properly. " + err.Error())
 		return nil, err
 	}
 
 	uAMan, err := botmanager.New(c.RobotsSourceURL, c.CacheUpdateInterval, log, c.CacheSize, c.UseFastMatch, c.RobotsTXTDisallowAll, c.RobotsTXTFilePath, c.RobotsSourceRetryInterval)
 	if err != nil {
-		log.Error("New: Unable to initialize bot user agent list manager. " + err.Error())
+		log.Error("wrangler.New: Unable to initialize bot user agent list manager. " + err.Error())
 		return nil, err
 	}
 	var bP *proxy.BotProxy

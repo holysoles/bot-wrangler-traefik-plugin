@@ -123,6 +123,7 @@ func New(source string, cacheInt string, l *logger.Log, cS int, sF bool, disallo
 		template:            t,
 		templateCache:       &bytes.Buffer{},
 	}
+	l.Debug("botmanager.New: initialized BotUAManager, performing first data source refresh")
 	err = uAMan.refreshBotIndex()
 	return &uAMan, err
 }
