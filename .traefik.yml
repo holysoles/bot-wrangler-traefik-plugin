@@ -4,7 +4,7 @@ iconPath: .assets/icon.png
 
 import: github.com/holysoles/bot-wrangler-traefik-plugin
 
-summary: A plugin to helps manage and enforce your robots.txt against bots
+summary: A plugin to help manage and enforce your robots.txt against bots
 
 testData:
   LogLevel: "INFO"
