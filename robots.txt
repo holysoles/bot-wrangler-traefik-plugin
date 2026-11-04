@@ -1,4 +1,5 @@
 {{ range $agent := .UserAgentList }}
 User-agent: {{ $agent }}
 {{- end }}
+user-agent: __usage_ai-training
 Disallow: /
