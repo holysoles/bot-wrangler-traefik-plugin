@@ -28,6 +28,7 @@ const (
 // default robots.txt template that will be rendered.
 const (
 	RobotsTxtDefault = `
+User-agent: __usage_ai-training
 {{ range $agent := .UserAgentList }}
 User-agent: {{ $agent }}
 {{- end }}
@@ -38,6 +39,7 @@ Disallow: /
 // robots.txt template that will disallow all user-agents.
 const (
 	RobotsTxtDisallowAll = `
+User-agent: __usage_ai-training
 User-agent: *
 Disallow: /
 `
