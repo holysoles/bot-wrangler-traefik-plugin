@@ -260,7 +260,7 @@ func TestWranglerRobotsTxtDisallowAll(t *testing.T) {
 	}
 	resBodyB, _ := io.ReadAll(res.Body)
 	resBody := string(resBodyB)
-	want := regexp.MustCompile("User-agent: \\*\nDisallow: \\/")
+	want := regexp.MustCompile("User-agent: __usage_ai-training\nUser-agent: \\*\nDisallow: \\/")
 	if !want.MatchString(resBody) {
 		t.Errorf("robots.txt did not contain a wildcard for disallowed user-agents. Got: %s", resBody)
 	}
